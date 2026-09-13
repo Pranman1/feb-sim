@@ -241,8 +241,10 @@ public class TrackLoader : MonoBehaviour
         {
             // grid: car 0 on the centreline, the others alternately left and right of it
             float lateral = GridSpacing * ((i + 1) / 2) * (i % 2 == 1 ? 1f : -1f);
-            Vehicles[i].position = TrackData.ToUnity(pose.x, pose.y, 0.01f) + rotation * new Vector3(lateral, 0f, 0f);
-            Vehicles[i].rotation = rotation;
+            Vector3 position = TrackData.ToUnity(pose.x, pose.y, 0.01f) + rotation * new Vector3(lateral, 0f, 0f);
+            Vehicles[i].SetPositionAndRotation(position, rotation);
+            var body = Vehicles[i].GetComponent<Rigidbody>();   // interpolated bodies ignore a bare transform move
+            if (body != null) { body.position = position; body.rotation = rotation; }
             var timer = Vehicles[i].GetComponent<LapTimer>();
             if (timer == null) continue;
             timer.Checkpoints = checkpoints;
@@ -250,6 +252,7 @@ public class TrackLoader : MonoBehaviour
             if (FebLaunch.LidarHz > 0f)
                 foreach (var lidar in Vehicles[i].GetComponentsInChildren<LIDAR>(true)) lidar.ScanRate = FebLaunch.LidarHz;
         }
+        Physics.SyncTransforms();
     }
 
     void PlaceCameras(Transform parent)
