@@ -19,7 +19,7 @@ print("using UnityEngine;\nusing UnityEngine.UI;")
 print("namespace TMPro { public class TextMeshProUGUI : MonoBehaviour { public string text; } }")
 for cls in ("Socket", "ResetManager"):
     print(f"public class {cls} : MonoBehaviour {{\n{fields(cls)}\n}}")
-for cls in ("CoSimManager", "WheelEncoder", "GPS", "IMU", "WeatherManager", "TimeOfDay", "TwistController",
+for cls in ("CoSimManager", "WeatherManager", "TimeOfDay", "TwistController",
             "VehicleLighting", "CarLighting", "ROVLighting", "LIDAR3D", "TireFriction", "TLController"):
     print(f"public class {cls} : MonoBehaviour {{ }}")
 PY
@@ -30,7 +30,7 @@ NETSTD=$(ls "$E"/NetStandard/ref/2.1.0/*.dll | sed 's/^/-r:/')
   -define:UNITY_EDITOR -define:UNITY_2022_3 -define:UNITY_STANDALONE $NETSTD $REFS \
   $(find "$UGUI/Runtime" -name "*.cs" -not -name AssemblyInfo.cs) "$OUT/stubs.cs" \
   Assets/FEB/Scripts/*.cs Assets/FEB/Editor/*.cs \
-  Assets/Scripts/{LapTimer,FollowTarget,CLIManager,SocketConnection,DrivingMode,CameraSwitch,LIDAR,VehicleController,AutomobileController,AbstractTargetFollower,WheelEffects}.cs \
-  | grep -E "error" && exit 1
+  Assets/Scripts/{LapTimer,FollowTarget,CLIManager,SocketConnection,DrivingMode,CameraSwitch,LIDAR,VehicleController,AutomobileController,AbstractTargetFollower,WheelEffects,WheelEncoder,GPS,IMU,FrameGrabber}.cs \
+  > "$OUT/csc.log" 2>&1 || { grep -E "error" "$OUT/csc.log"; exit 1; }
 echo "FEB scripts compile"
 rm -rf "$OUT"

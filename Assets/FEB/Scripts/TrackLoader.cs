@@ -21,7 +21,8 @@ public class TrackLoader : MonoBehaviour
     public Material WallMaterial;
     public GameObject ConePrefab;
     public float ConeHeight = 0.30f;            // metres; cones scaled so the lidar plane (~0.1 m) hits them
-    public float GridSpacing = 0.35f;           // lateral gap between cars on the start grid (head-to-head)
+    public float GridSpacing = 0.6f;            // lateral gap between cars on the start grid (head-to-head)
+    public float GridStagger = 1.0f;            // each further grid slot starts this much behind the previous
     public Text TitleLabel;                     // toolbar text, shows the track name
     public Socket Bridge;                       // the scene's Socket, whose per-vehicle arrays grow with --cars
     public DrivingMode Driving;
@@ -239,9 +240,9 @@ public class TrackLoader : MonoBehaviour
         Quaternion rotation = TrackData.ToUnityYaw(pose.yaw);
         for (int i = 0; i < Vehicles.Length; i++)
         {
-            // grid: car 0 on the centreline, the others alternately left and right of it
-            float lateral = GridSpacing * ((i + 1) / 2) * (i % 2 == 1 ? 1f : -1f);
-            Vector3 position = TrackData.ToUnity(pose.x, pose.y, 0.01f) + rotation * new Vector3(lateral, 0f, 0f);
+            // staggered grid centred on the spawn pose: slots side by side, each one further back
+            float lateral = GridSpacing * (i - 0.5f * (Vehicles.Length - 1));
+            Vector3 position = TrackData.ToUnity(pose.x, pose.y, 0.01f) + rotation * new Vector3(lateral, 0f, -GridStagger * i);
             Vehicles[i].SetPositionAndRotation(position, rotation);
             var body = Vehicles[i].GetComponent<Rigidbody>();   // interpolated bodies ignore a bare transform move
             if (body != null) { body.position = position; body.rotation = rotation; }
