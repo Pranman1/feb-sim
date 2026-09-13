@@ -58,3 +58,7 @@ sysinfo.txt
 # Crashlytics generated file
 crashlytics-build.properties
 
+
+# FEB: shipped tracks are copied in at build time from ../feb-racing/tracks
+/Assets/StreamingAssets/Tracks/
+/Assets/StreamingAssets/Tracks.meta
