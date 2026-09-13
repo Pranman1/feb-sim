@@ -33,6 +33,11 @@ public static class FebScene
         loader.ConePrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Infrastructure/Traffic Cone.prefab");
         loader.TitleLabel = Find<Text>("AutoDRIVE Simulator");
         loader.TitleLabel.text = "FEB Simulator";
+        loader.Bridge = Find<Socket>("Socket");
+        loader.Driving = Object.FindObjectOfType<DrivingMode>(true);
+        loader.ResetManager = Object.FindObjectOfType<ResetManager>(true);
+        loader.gameObject.AddComponent<GhostLap>().GhostMaterial =
+            AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Transparent.mat");
 
         var auto = loader.gameObject.AddComponent<FebAutoStart>();
         auto.Cli = Object.FindObjectOfType<CLIManager>(true);

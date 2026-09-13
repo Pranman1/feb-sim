@@ -1,5 +1,6 @@
+using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -22,6 +23,9 @@ public class TrackLoader : MonoBehaviour
     public float ConeHeight = 0.30f;            // metres; cones scaled so the lidar plane (~0.1 m) hits them
     public float GridSpacing = 0.35f;           // lateral gap between cars on the start grid (head-to-head)
     public Text TitleLabel;                     // toolbar text, shows the track name
+    public Socket Bridge;                       // the scene's Socket, whose per-vehicle arrays grow with --cars
+    public DrivingMode Driving;
+    public ResetManager ResetManager;           // car 0's reset manager; extra cars get their own
 
     public TrackData Track { get; private set; }
     public string Folder { get; private set; }
@@ -47,9 +51,12 @@ public class TrackLoader : MonoBehaviour
         BuildWalls(root.transform);
         BuildCones(root.transform);
         var checkpoints = BuildCheckpoints(root.transform);
+        SpawnExtraCars();
         PlaceVehicles(checkpoints);
         PlaceCameras(root.transform);
         if (TitleLabel != null) TitleLabel.text = "FEB Simulator  |  " + Track.name;
+        var ghost = GetComponent<GhostLap>();
+        if (ghost != null && Vehicles.Length > 0) ghost.Bind(Vehicles[0], Folder);
     }
 
     // ------------------------------------------------------------------ walls
@@ -174,6 +181,55 @@ public class TrackLoader : MonoBehaviour
         }
         return list.ToArray();
     }
+
+    // ------------------------------------------------------------------ extra cars (head-to-head)
+
+    // Clones car 0 for --cars N and registers each clone with the bridge (as V2, V3, ...),
+    // the driving-mode toggle and its own reset manager, exactly like the upstream H2H scene.
+    void SpawnExtraCars()
+    {
+        if (FebLaunch.Cars <= 1 || Vehicles.Length == 0 || Bridge == null) return;
+        var original = Vehicles[0].gameObject;
+        var all = Vehicles.ToList();
+        for (int i = Vehicles.Length; i < FebLaunch.Cars; i++)
+        {
+            var clone = Instantiate(original, original.transform.parent);
+            clone.name = "RoboRacer " + (i + 1);
+            foreach (var cam in clone.GetComponentsInChildren<Camera>(true))
+                if (cam.targetTexture != null) cam.targetTexture = new RenderTexture(cam.targetTexture);
+
+            var reset = ResetManager.gameObject.AddComponent<ResetManager>();
+            reset.Vehicles = new[] { clone.transform };
+            reset.VehicleRigidBodies = new[] { clone.GetComponent<Rigidbody>() };
+            reset.CoSimManagers = new[] { clone.GetComponent<CoSimManager>() };
+            reset.LeftWheelEncoders = new[] { Twin(ResetManager.LeftWheelEncoders[0], clone) };
+            reset.RightWheelEncoders = new[] { Twin(ResetManager.RightWheelEncoders[0], clone) };
+            reset.LapTimers = new[] { clone.GetComponent<LapTimer>() };
+
+            Bridge.ResetManagers = Append(Bridge.ResetManagers, reset);
+            Bridge.VehicleRigidBodies = Append(Bridge.VehicleRigidBodies, clone.GetComponent<Rigidbody>());
+            Bridge.VehicleControllers = Append(Bridge.VehicleControllers, clone.GetComponent<VehicleController>());
+            Bridge.LeftWheelEncoders = Append(Bridge.LeftWheelEncoders, Twin(Bridge.LeftWheelEncoders[0], clone));
+            Bridge.RightWheelEncoders = Append(Bridge.RightWheelEncoders, Twin(Bridge.RightWheelEncoders[0], clone));
+            Bridge.PositioningSystems = Append(Bridge.PositioningSystems, Twin(Bridge.PositioningSystems[0], clone));
+            Bridge.InertialMeasurementUnits = Append(Bridge.InertialMeasurementUnits, Twin(Bridge.InertialMeasurementUnits[0], clone));
+            Bridge.LIDARUnits = Append(Bridge.LIDARUnits, Twin(Bridge.LIDARUnits[0], clone));
+            Bridge.FrontCameras = Append(Bridge.FrontCameras, Twin(Bridge.FrontCameras[0], clone));
+            Bridge.LapTimers = Append(Bridge.LapTimers, clone.GetComponent<LapTimer>());
+            if (Driving != null) Driving.VehicleControllers = Append(Driving.VehicleControllers, clone.GetComponent<VehicleController>());
+            all.Add(clone.transform);
+        }
+        Vehicles = all.ToArray();
+    }
+
+    // The clone's counterpart of a component of car 0 (same position in the hierarchy).
+    T Twin<T>(T component, GameObject clone) where T : Component
+    {
+        int index = Array.IndexOf(Vehicles[0].GetComponentsInChildren<T>(true), component);
+        return clone.GetComponentsInChildren<T>(true)[index];
+    }
+
+    static T[] Append<T>(T[] array, T item) { return (array ?? new T[0]).Concat(new[] { item }).ToArray(); }
 
     // ------------------------------------------------------------------ vehicles and cameras
 
