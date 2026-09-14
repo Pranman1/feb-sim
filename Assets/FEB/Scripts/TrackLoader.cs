@@ -26,7 +26,8 @@ public class TrackLoader : MonoBehaviour
     public Socket Bridge;                       // the scene's Socket, whose per-vehicle arrays grow with --cars
     public DrivingMode Driving;
     public ResetManager ResetManager;           // car 0's reset manager; extra cars get their own
-    public Sprite Decal;                        // replaces the sponsor decals on the cars (cosmetic only)
+    public Sprite DecalLeft;                    // rear panel, driver's left: the FEB mark (cosmetic only)
+    public Sprite DecalRight;                   // rear panel, driver's right: "FEB AUTO"
 
     public TrackData Track { get; private set; }
     public string Folder { get; private set; }
@@ -275,12 +276,19 @@ public class TrackLoader : MonoBehaviour
 
     static T[] Append<T>(T[] array, T item) { return (array ?? new T[0]).Concat(new[] { item }).ToArray(); }
 
+    // The car's rear panel carries two sponsor images side by side; they become the FEB mark
+    // (driver's left) and "FEB AUTO" (driver's right). Inactive decal variants stay inactive.
     void ApplyDecals()
     {
-        if (Decal == null) return;
+        if (DecalLeft == null || DecalRight == null) return;
         foreach (var car in Vehicles)
-            foreach (var image in car.GetComponentsInChildren<Image>(true))
-                if (image.sprite != null) { image.sprite = Decal; image.preserveAspect = false; }
+            foreach (var image in car.GetComponentsInChildren<Image>())
+            {
+                if (image.sprite == null) continue;
+                bool left = car.InverseTransformPoint(image.rectTransform.position).x < 0f;
+                image.sprite = left ? DecalLeft : DecalRight;
+                image.preserveAspect = true;
+            }
     }
 
     // ------------------------------------------------------------------ vehicles and cameras

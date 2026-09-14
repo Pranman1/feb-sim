@@ -43,7 +43,8 @@ public static class FebScene
         auto.Connection = Find<SocketConnection>("Connection");
         auto.Driving = Object.FindObjectOfType<DrivingMode>(true);
         auto.Cameras = Object.FindObjectOfType<CameraSwitch>(true);
-        loader.Decal = LoadSprite("Assets/FEB/Sprites/FEB Decal.png");
+        loader.DecalLeft = LoadSprite("Assets/FEB/Sprites/FEB Decal Left.png");
+        loader.DecalRight = LoadSprite("Assets/FEB/Sprites/FEB Decal Right.png");
 
         AddTrackButton(Find<DrivingMode>("Driving Mode").transform.parent);
 
