@@ -60,9 +60,10 @@ public class TrackLoader : MonoBehaviour
         ApplyDecals();
         PlaceVehicles(checkpoints);
         PlaceCameras(root.transform);
-        if (TitleLabel != null) TitleLabel.text = "FEB Simulator  |  " + Track.name;
+        if (TitleLabel != null) TitleLabel.text = "FEBAUTO Sim  |  " + Track.name;
         var ghost = GetComponent<GhostLap>();
         if (ghost != null && Vehicles.Length > 0) ghost.Bind(Vehicles[0], Folder);
+        if (StartLine != null) foreach (var car in Vehicles) StartLine.Watch(car);
         var hud = GetComponent<FebHud>();
         if (hud != null && Vehicles.Length > 0) hud.Bind(Vehicles[0], StartLine);
         var look = GetComponent<FebLook>();
@@ -236,7 +237,7 @@ public class TrackLoader : MonoBehaviour
             var box = go.AddComponent<BoxCollider>();
             box.isTrigger = true;
             box.size = new Vector3(cp.width, CheckpointHeight, CheckpointThickness);
-            if (finish) StartLine = go.AddComponent<FebStartLine>();
+            if (finish) { StartLine = go.AddComponent<FebStartLine>(); StartLine.HalfWidth = cp.width / 2f; }
             else list.Add(go.transform);
         }
         return list.ToArray();

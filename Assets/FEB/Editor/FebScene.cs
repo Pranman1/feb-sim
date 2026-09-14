@@ -31,7 +31,7 @@ public static class FebScene
         loader.OverviewCamera = Find<Camera>("God's Eye").transform;
         loader.WallMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Air Duct/Air_Duct_White.mat");
         loader.TitleLabel = Find<Text>("AutoDRIVE Simulator");
-        loader.TitleLabel.text = "FEB Simulator";
+        loader.TitleLabel.text = "FEBAUTO Sim";
         loader.Bridge = Find<Socket>("Socket");
         loader.Driving = Object.FindObjectOfType<DrivingMode>(true);
         loader.ResetManager = Object.FindObjectOfType<ResetManager>(true);
