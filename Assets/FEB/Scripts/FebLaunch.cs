@@ -5,6 +5,7 @@ using UnityEngine;
     Command-line options of the FEB Simulator (all optional):
 
       --track <name|folder>      track to load (default: first shipped track)
+      --tracks <folder>          extra folder of track folders (the launcher passes the repo's tracks/)
       --connect <host:port>      connect to the devkit bridge on start
       --mode <manual|autonomous> driving mode on start (default: autonomous)
       --lidar-hz <rate>          lidar scan rate override
@@ -17,6 +18,7 @@ using UnityEngine;
 public static class FebLaunch
 {
     public static string Track = Get("--track");        // also set by the in-app menu
+    public static string Tracks = Get("--tracks");
     public static string Connect = Get("--connect");
     public static string Mode = Get("--mode");
     public static string Camera = Get("--camera");

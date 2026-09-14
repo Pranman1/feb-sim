@@ -32,6 +32,7 @@ public class TrackLoader : MonoBehaviour
     public TrackData Track { get; private set; }
     public string Folder { get; private set; }
     public List<MeshRenderer> WallRenderers { get; } = new List<MeshRenderer>();   // for the Visual look's banding
+    public FebStartLine StartLine { get; private set; }                              // first-crossing times for the HUD
 
     const int RingSegments = 12;
     const float CheckpointHeight = 1.0f;
@@ -63,7 +64,7 @@ public class TrackLoader : MonoBehaviour
         var ghost = GetComponent<GhostLap>();
         if (ghost != null && Vehicles.Length > 0) ghost.Bind(Vehicles[0], Folder);
         var hud = GetComponent<FebHud>();
-        if (hud != null && Vehicles.Length > 0) hud.Bind(Vehicles[0]);
+        if (hud != null && Vehicles.Length > 0) hud.Bind(Vehicles[0], StartLine);
         var look = GetComponent<FebLook>();
         if (look != null) look.Apply(this);
     }
@@ -123,8 +124,8 @@ public class TrackLoader : MonoBehaviour
                 int k1 = (k + 1) % RingSegments;
                 int a = i * RingSegments + k, b = i * RingSegments + k1;
                 int c = next * RingSegments + k, d = next * RingSegments + k1;
-                triangles[t++] = a; triangles[t++] = c; triangles[t++] = b;
-                triangles[t++] = b; triangles[t++] = c; triangles[t++] = d;
+                triangles[t++] = a; triangles[t++] = b; triangles[t++] = c;   // outside faces front (clockwise from outside)
+                triangles[t++] = b; triangles[t++] = d; triangles[t++] = c;
             }
         }
         var mesh = new Mesh { name = "Air duct" };
@@ -235,7 +236,8 @@ public class TrackLoader : MonoBehaviour
             var box = go.AddComponent<BoxCollider>();
             box.isTrigger = true;
             box.size = new Vector3(cp.width, CheckpointHeight, CheckpointThickness);
-            if (!finish) list.Add(go.transform);
+            if (finish) StartLine = go.AddComponent<FebStartLine>();
+            else list.Add(go.transform);
         }
         return list.ToArray();
     }

@@ -14,12 +14,18 @@ public class FebHud : MonoBehaviour
 
     LapTimer timer;
     Rigidbody body;
+    Transform car;
+    FebStartLine startLine;
+    int lapsAtStart;
     Text lapTime, lastLap, bestLap, lapCount, collisions, speed;
 
-    public void Bind(Transform car)
+    public void Bind(Transform vehicle, FebStartLine line)
     {
+        car = vehicle;
+        startLine = line;
         timer = car.GetComponent<LapTimer>();
         body = car.GetComponent<Rigidbody>();
+        lapsAtStart = timer.LapCount;
         if (UpstreamPanel != null) UpstreamPanel.SetActive(false);
         Build();
     }
@@ -30,7 +36,7 @@ public class FebHud : MonoBehaviour
         panel.gameObject.AddComponent<Image>().color = new Color(0.05f, 0.07f, 0.11f, 0.78f);
         Rect("Top line", panel, new Vector2(0f, 0.96f), new Vector2(1f, 1f)).gameObject.AddComponent<Image>().color = FebLook.Gold;
 
-        lapTime = Label(panel, "Lap time", new Vector2(0.03f, 0.42f), new Vector2(0.55f, 0.94f), 46, Color.white, TextAnchor.MiddleLeft, "0.0 s");
+        lapTime = Label(panel, "Lap time", new Vector2(0.03f, 0.42f), new Vector2(0.55f, 0.94f), 46, Color.white, TextAnchor.MiddleLeft, "--");
         speed = Label(panel, "Speed", new Vector2(0.55f, 0.42f), new Vector2(0.97f, 0.94f), 30, Color.white, TextAnchor.MiddleRight);
 
         float[] x = { 0.03f, 0.27f, 0.51f, 0.75f };
@@ -47,7 +53,11 @@ public class FebHud : MonoBehaviour
     void Update()
     {
         if (timer == null) return;
-        lapTime.text = timer.LapTime.ToString("0.0") + " s";
+        // the clock starts at the car's first crossing of the line, not at scene load; once the
+        // upstream timer has counted a lap it resets at the line itself and is used as is
+        float? offset = startLine != null ? startLine.Offset(car) : 0f;
+        if (offset == null) lapTime.text = "--";
+        else lapTime.text = (timer.LapCount > lapsAtStart ? timer.LapTime : timer.LapTime - offset.Value).ToString("0.0") + " s";
         lastLap.text = Time(timer.LastLapTime);
         bestLap.text = Time(timer.BestLapTime);
         lapCount.text = timer.LapCount.ToString();
