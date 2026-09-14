@@ -14,12 +14,12 @@ using System;
 */
 public static class FebLaunch
 {
-    public static string Track = Get("--track");        // also set by the in-app track menu
+    public static string Track = Get("--track");        // also set by the in-app menu
     public static string Connect = Get("--connect");
     public static string Mode = Get("--mode");
     public static string Camera = Get("--camera");
     public static float LidarHz = float.TryParse(Get("--lidar-hz"), out var hz) ? hz : 0f;
-    public static int Cars = int.TryParse(Get("--cars"), out var n) ? Math.Max(1, n) : 1;
+    public static int Cars = int.TryParse(Get("--cars"), out var n) ? Math.Max(1, n) : 1;   // also set by the in-app menu
 
     static string Get(string flag)
     {

@@ -66,13 +66,15 @@ public class TrackLoader : MonoBehaviour
     void BuildWalls(Transform parent)
     {
         float radius = Track.wall_diameter / 2f;
+        var material = new Material(WallMaterial);
+        if (ColorUtility.TryParseHtmlString(Track.wall_color ?? "#9a9a9a", out var color)) material.color = color;
         foreach (var wall in Track.walls)
         {
             var go = new GameObject(RacetrackName);
             go.transform.SetParent(parent, false);
             var mesh = TubeMesh(wall.points, radius);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = WallMaterial;
+            go.AddComponent<MeshRenderer>().sharedMaterial = material;
             go.AddComponent<MeshCollider>().sharedMesh = mesh;
         }
     }
@@ -278,7 +280,7 @@ public class TrackLoader : MonoBehaviour
         if (Decal == null) return;
         foreach (var car in Vehicles)
             foreach (var image in car.GetComponentsInChildren<Image>(true))
-                if (image.sprite != null) { image.sprite = Decal; image.preserveAspect = true; }
+                if (image.sprite != null) { image.sprite = Decal; image.preserveAspect = false; }
     }
 
     // ------------------------------------------------------------------ vehicles and cameras

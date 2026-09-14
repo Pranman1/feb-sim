@@ -25,6 +25,7 @@ public class TrackData
     public TrackPose spawn;
     public TrackWall[] walls;
     public float wall_diameter;
+    public string wall_color;   // hex, e.g. "#9a9a9a"
     public TrackCone[] cones;
 
     public static TrackData Load(string folder)

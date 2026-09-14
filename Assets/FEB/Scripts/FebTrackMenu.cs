@@ -1,26 +1,37 @@
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /*
-    Menu button that cycles through the available tracks and reloads the scene.
+    Menu dropdowns: the track to load and the number of cars. Either choice reloads the scene.
 */
 public class FebTrackMenu : MonoBehaviour
 {
-    public Text Label;
+    public Dropdown TrackPicker;
+    public Dropdown CarsPicker;
+    const int MaxCars = 4;
 
     void Start()
     {
-        Label.text = FebLaunch.Track != null ? Path.GetFileName(FebLaunch.Track) : "Track";
+        var folders = TrackLibrary.Folders();
+        TrackPicker.ClearOptions();
+        TrackPicker.AddOptions(folders.Select(Path.GetFileName).ToList());
+        TrackPicker.SetValueWithoutNotify(Mathf.Max(0, folders.IndexOf(FebLaunch.Track)));
+        TrackPicker.onValueChanged.AddListener(index => Reload(folders[index], FebLaunch.Cars));
+
+        CarsPicker.ClearOptions();
+        CarsPicker.AddOptions(Enumerable.Range(1, MaxCars).Select(n => n == 1 ? "1 car" : n + " cars").ToList());
+        CarsPicker.SetValueWithoutNotify(Mathf.Clamp(FebLaunch.Cars, 1, MaxCars) - 1);
+        CarsPicker.onValueChanged.AddListener(index => Reload(FebLaunch.Track, index + 1));
     }
 
-    public void NextTrack()
+    static void Reload(string track, int cars)
     {
-        var folders = TrackLibrary.Folders();
-        if (folders.Count == 0) return;
-        int index = (folders.IndexOf(FebLaunch.Track) + 1) % folders.Count;
-        FebLaunch.Track = folders[index];
+        if (track == FebLaunch.Track && cars == FebLaunch.Cars) return;
+        FebLaunch.Track = track;
+        FebLaunch.Cars = cars;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

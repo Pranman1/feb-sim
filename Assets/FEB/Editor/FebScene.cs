@@ -43,7 +43,7 @@ public static class FebScene
         auto.Connection = Find<SocketConnection>("Connection");
         auto.Driving = Object.FindObjectOfType<DrivingMode>(true);
         auto.Cameras = Object.FindObjectOfType<CameraSwitch>(true);
-        loader.Decal = LoadSprite("Assets/FEB/Sprites/FEB Logo.png");
+        loader.Decal = LoadSprite("Assets/FEB/Sprites/FEB Decal.png");
 
         AddTrackButton(Find<DrivingMode>("Driving Mode").transform.parent);
 
@@ -52,19 +52,29 @@ public static class FebScene
         Debug.Log("FEB: wrote " + Output);
     }
 
-    // The Scene Light row is of no use on a racetrack; it becomes the Track button.
+    // The Scene Light row is of no use on a racetrack; track and car-count dropdowns take its place.
     static void AddTrackButton(Transform menu)
     {
-        var row = menu.Find("Scene Light").gameObject;
-        row.name = "Track";
-        Object.DestroyImmediate(row.GetComponent<SceneLighting>());
-        var label = row.GetComponentInChildren<Text>();
-        label.text = "Track";
-        var trackMenu = row.AddComponent<FebTrackMenu>();
-        trackMenu.Label = label;
-        var button = row.GetComponent<Button>();
-        while (button.onClick.GetPersistentEventCount() > 0) UnityEventTools.RemovePersistentListener(button.onClick, 0);
-        UnityEventTools.AddPersistentListener(button.onClick, new UnityAction(trackMenu.NextTrack));
+        var old = menu.Find("Scene Light");
+        var rect = old.GetComponent<RectTransform>();
+        float top = rect.anchorMax.y, bottom = rect.anchorMin.y, mid = 0.5f * (top + bottom);
+        var picker = menu.gameObject.AddComponent<FebTrackMenu>();
+        picker.TrackPicker = MakeDropdown(menu, "Track", mid + 0.005f, top - 0.005f);
+        picker.CarsPicker = MakeDropdown(menu, "Cars", bottom + 0.005f, mid - 0.005f);
+        Object.DestroyImmediate(old.gameObject);
+    }
+
+    static Dropdown MakeDropdown(Transform menu, string name, float yMin, float yMax)
+    {
+        var go = DefaultControls.CreateDropdown(new DefaultControls.Resources());
+        go.name = name;
+        go.transform.SetParent(menu, false);
+        var r = go.GetComponent<RectTransform>();
+        r.anchorMin = new Vector2(0.1f, yMin);
+        r.anchorMax = new Vector2(0.9f, yMax);
+        r.offsetMin = r.offsetMax = Vector2.zero;
+        go.GetComponentInChildren<Text>().fontSize = 20;
+        return go.GetComponent<Dropdown>();
     }
 
     static Sprite LoadSprite(string path)
