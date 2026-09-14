@@ -129,16 +129,17 @@ public class TrackLoader : MonoBehaviour
     {
         if (Track.cones == null || Track.cones.Length == 0) return;
         var mesh = ConeMesh(ConeHeight);
-        var materials = new Dictionary<string, Material>();
+        var materials = new Dictionary<string, Material[]>();
         foreach (var cone in Track.cones)
         {
-            if (!materials.TryGetValue(cone.color, out var material))
-                materials[cone.color] = material = new Material(WallMaterial) { color = ConeColor(cone.color) };
+            if (!materials.TryGetValue(cone.color, out var pair))
+                materials[cone.color] = pair = new[] { new Material(WallMaterial) { color = ConeColor(cone.color) },
+                                                       new Material(WallMaterial) { color = StripeColor(cone.color) } };
             var go = new GameObject("Cone " + cone.color);
             go.transform.SetParent(parent, false);
             go.transform.position = TrackData.ToUnity(cone.x, cone.y);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = material;
+            go.AddComponent<MeshRenderer>().sharedMaterials = pair;
             var collider = go.AddComponent<CapsuleCollider>();
             collider.center = new Vector3(0f, ConeHeight / 2f, 0f);
             collider.height = ConeHeight;
@@ -146,37 +147,48 @@ public class TrackLoader : MonoBehaviour
         }
     }
 
-    // A truncated cone on a square base plate, apex up, origin at the ground.
+    // A truncated cone on a square base plate, apex up, origin at the ground. Submesh 0 is the
+    // body colour, submesh 1 the stripe band (FSAE: blue/white, yellow/black).
     static Mesh ConeMesh(float height)
     {
         const int segments = 16;
         float bottom = 0.30f * height, top = 0.08f * height, plate = 0.45f * height, plateHeight = 0.05f * height;
         var vertices = new List<Vector3>();
-        var triangles = new List<int>();
-        void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+        var body = new List<int>();
+        var stripe = new List<int>();
+        void Quad(List<int> tris, Vector3 a, Vector3 b, Vector3 c, Vector3 d)
         {
             int i = vertices.Count;
             vertices.AddRange(new[] { a, b, c, d });
-            triangles.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 });
+            tris.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 });
         }
-        for (int k = 0; k < segments; k++)
-        {
-            float a0 = 2f * Mathf.PI * k / segments, a1 = 2f * Mathf.PI * (k + 1) / segments;
-            Vector3 r0 = new Vector3(Mathf.Cos(a0), 0f, Mathf.Sin(a0)), r1 = new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1));
-            Quad(r0 * bottom + Vector3.up * plateHeight, r0 * top + Vector3.up * height, r1 * top + Vector3.up * height, r1 * bottom + Vector3.up * plateHeight);
-        }
+        // side: three bands, the middle one is the stripe
+        float[] h = { plateHeight, 0.45f * height, 0.65f * height, height };
+        float Radius(float y) => Mathf.Lerp(bottom, top, (y - plateHeight) / (height - plateHeight));
+        for (int band = 0; band < 3; band++)
+            for (int k = 0; k < segments; k++)
+            {
+                float a0 = 2f * Mathf.PI * k / segments, a1 = 2f * Mathf.PI * (k + 1) / segments;
+                Vector3 r0 = new Vector3(Mathf.Cos(a0), 0f, Mathf.Sin(a0)), r1 = new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1));
+                float y0 = h[band], y1 = h[band + 1];
+                Quad(band == 1 ? stripe : body, r0 * Radius(y0) + Vector3.up * y0, r0 * Radius(y1) + Vector3.up * y1,
+                     r1 * Radius(y1) + Vector3.up * y1, r1 * Radius(y0) + Vector3.up * y0);
+            }
         Vector3 p0 = new Vector3(-plate, 0f, -plate), p1 = new Vector3(plate, 0f, -plate), p2 = new Vector3(plate, 0f, plate), p3 = new Vector3(-plate, 0f, plate);
         Vector3 up = Vector3.up * plateHeight;
-        Quad(p0 + up, p3 + up, p2 + up, p1 + up);                       // plate top
-        Quad(p0, p1, p1 + up, p0 + up); Quad(p1, p2, p2 + up, p1 + up);  // plate sides
-        Quad(p2, p3, p3 + up, p2 + up); Quad(p3, p0, p0 + up, p3 + up);
-        var mesh = new Mesh { name = "Cone" };
+        Quad(body, p0 + up, p3 + up, p2 + up, p1 + up);                                  // plate top
+        Quad(body, p0, p1, p1 + up, p0 + up); Quad(body, p1, p2, p2 + up, p1 + up);      // plate sides
+        Quad(body, p2, p3, p3 + up, p2 + up); Quad(body, p3, p0, p0 + up, p3 + up);
+        var mesh = new Mesh { name = "Cone", subMeshCount = 2 };
         mesh.SetVertices(vertices);
-        mesh.SetTriangles(triangles, 0);
+        mesh.SetTriangles(body, 0);
+        mesh.SetTriangles(stripe, 1);
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
         return mesh;
     }
+
+    static Color StripeColor(string name) { return name == "yellow" ? Color.black : Color.white; }
 
     static Color ConeColor(string name)
     {
