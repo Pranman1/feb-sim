@@ -18,15 +18,15 @@ public class TrackLoader : MonoBehaviour
     public Transform[] Vehicles;                // car roots (LapTimer + VehicleController), index 0 = roboracer_1
     public FollowTarget TrackCamera;            // top-down "Trackcam" follower
     public Transform OverviewCamera;            // "God's Eye" camera, aimed at the car by TrackTarget
-    public Material WallMaterial;
-    public GameObject ConePrefab;
-    public float ConeHeight = 0.30f;            // metres; cones scaled so the lidar plane (~0.1 m) hits them
+    public Material WallMaterial;               // HDRP lit material; also tinted for the cones
+    public float ConeHeight = 0.30f;            // metres; tall enough for the lidar plane (~0.1 m) to hit
     public float GridSpacing = 0.6f;            // lateral gap between cars on the start grid (head-to-head)
     public float GridStagger = 1.0f;            // each further grid slot starts this much behind the previous
     public Text TitleLabel;                     // toolbar text, shows the track name
     public Socket Bridge;                       // the scene's Socket, whose per-vehicle arrays grow with --cars
     public DrivingMode Driving;
     public ResetManager ResetManager;           // car 0's reset manager; extra cars get their own
+    public Sprite Decal;                        // replaces the sponsor decals on the cars (cosmetic only)
 
     public TrackData Track { get; private set; }
     public string Folder { get; private set; }
@@ -53,6 +53,7 @@ public class TrackLoader : MonoBehaviour
         BuildCones(root.transform);
         var checkpoints = BuildCheckpoints(root.transform);
         SpawnExtraCars();
+        ApplyDecals();
         PlaceVehicles(checkpoints);
         PlaceCameras(root.transform);
         if (TitleLabel != null) TitleLabel.text = "FEB Simulator  |  " + Track.name;
@@ -122,31 +123,59 @@ public class TrackLoader : MonoBehaviour
 
     // ------------------------------------------------------------------ cones
 
+    // Cones are generated, not loaded: the upstream cone asset is a SketchUp file that
+    // only imports on Windows/macOS editors.
     void BuildCones(Transform parent)
     {
-        if (ConePrefab == null || Track.cones == null || Track.cones.Length == 0) return;
+        if (Track.cones == null || Track.cones.Length == 0) return;
+        var mesh = ConeMesh(ConeHeight);
         var materials = new Dictionary<string, Material>();
         foreach (var cone in Track.cones)
         {
-            var go = Instantiate(ConePrefab, TrackData.ToUnity(cone.x, cone.y), Quaternion.identity, parent);
-            go.name = "Cone " + cone.color;
-            var renderer = go.GetComponentInChildren<Renderer>();
-            float height = renderer.bounds.size.y;
-            if (height > 0f) go.transform.localScale *= ConeHeight / height;
             if (!materials.TryGetValue(cone.color, out var material))
-            {
-                material = new Material(renderer.sharedMaterial) { color = ConeColor(cone.color) };
-                materials[cone.color] = material;
-            }
-            foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = material;
-            if (go.GetComponentInChildren<Collider>() == null)
-            {
-                var collider = go.AddComponent<CapsuleCollider>();
-                collider.center = new Vector3(0f, ConeHeight / 2f, 0f);
-                collider.height = ConeHeight;
-                collider.radius = ConeHeight / 4f;
-            }
+                materials[cone.color] = material = new Material(WallMaterial) { color = ConeColor(cone.color) };
+            var go = new GameObject("Cone " + cone.color);
+            go.transform.SetParent(parent, false);
+            go.transform.position = TrackData.ToUnity(cone.x, cone.y);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = material;
+            var collider = go.AddComponent<CapsuleCollider>();
+            collider.center = new Vector3(0f, ConeHeight / 2f, 0f);
+            collider.height = ConeHeight;
+            collider.radius = 0.3f * ConeHeight;
         }
+    }
+
+    // A truncated cone on a square base plate, apex up, origin at the ground.
+    static Mesh ConeMesh(float height)
+    {
+        const int segments = 16;
+        float bottom = 0.30f * height, top = 0.08f * height, plate = 0.45f * height, plateHeight = 0.05f * height;
+        var vertices = new List<Vector3>();
+        var triangles = new List<int>();
+        void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+        {
+            int i = vertices.Count;
+            vertices.AddRange(new[] { a, b, c, d });
+            triangles.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 });
+        }
+        for (int k = 0; k < segments; k++)
+        {
+            float a0 = 2f * Mathf.PI * k / segments, a1 = 2f * Mathf.PI * (k + 1) / segments;
+            Vector3 r0 = new Vector3(Mathf.Cos(a0), 0f, Mathf.Sin(a0)), r1 = new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1));
+            Quad(r0 * bottom + Vector3.up * plateHeight, r0 * top + Vector3.up * height, r1 * top + Vector3.up * height, r1 * bottom + Vector3.up * plateHeight);
+        }
+        Vector3 p0 = new Vector3(-plate, 0f, -plate), p1 = new Vector3(plate, 0f, -plate), p2 = new Vector3(plate, 0f, plate), p3 = new Vector3(-plate, 0f, plate);
+        Vector3 up = Vector3.up * plateHeight;
+        Quad(p0 + up, p3 + up, p2 + up, p1 + up);                       // plate top
+        Quad(p0, p1, p1 + up, p0 + up); Quad(p1, p2, p2 + up, p1 + up);  // plate sides
+        Quad(p2, p3, p3 + up, p2 + up); Quad(p3, p0, p0 + up, p3 + up);
+        var mesh = new Mesh { name = "Cone" };
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles, 0);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
     }
 
     static Color ConeColor(string name)
@@ -217,7 +246,7 @@ public class TrackLoader : MonoBehaviour
             Bridge.LIDARUnits = Append(Bridge.LIDARUnits, Twin(Bridge.LIDARUnits[0], clone));
             Bridge.FrontCameras = Append(Bridge.FrontCameras, Twin(Bridge.FrontCameras[0], clone));
             Bridge.LapTimers = Append(Bridge.LapTimers, clone.GetComponent<LapTimer>());
-            if (Driving != null) Driving.VehicleControllers = Append(Driving.VehicleControllers, clone.GetComponent<VehicleController>());
+            clone.GetComponent<VehicleController>().DrivingMode = 1;   // extra cars are only ever driven by a bridge
             all.Add(clone.transform);
         }
         Vehicles = all.ToArray();
@@ -231,6 +260,14 @@ public class TrackLoader : MonoBehaviour
     }
 
     static T[] Append<T>(T[] array, T item) { return (array ?? new T[0]).Concat(new[] { item }).ToArray(); }
+
+    void ApplyDecals()
+    {
+        if (Decal == null) return;
+        foreach (var car in Vehicles)
+            foreach (var image in car.GetComponentsInChildren<Image>(true))
+                if (image.sprite != null) { image.sprite = Decal; image.preserveAspect = true; }
+    }
 
     // ------------------------------------------------------------------ vehicles and cameras
 

@@ -30,7 +30,6 @@ public static class FebScene
         loader.TrackCamera = Find<FollowTarget>("Trackcam");
         loader.OverviewCamera = Find<Camera>("God's Eye").transform;
         loader.WallMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Air Duct/Air_Duct_White.mat");
-        loader.ConePrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Infrastructure/Traffic Cone.prefab");
         loader.TitleLabel = Find<Text>("AutoDRIVE Simulator");
         loader.TitleLabel.text = "FEB Simulator";
         loader.Bridge = Find<Socket>("Socket");
@@ -43,6 +42,8 @@ public static class FebScene
         auto.Cli = Object.FindObjectOfType<CLIManager>(true);
         auto.Connection = Find<SocketConnection>("Connection");
         auto.Driving = Object.FindObjectOfType<DrivingMode>(true);
+        auto.Cameras = Object.FindObjectOfType<CameraSwitch>(true);
+        loader.Decal = LoadSprite("Assets/FEB/Sprites/FEB Logo.png");
 
         AddTrackButton(Find<DrivingMode>("Driving Mode").transform.parent);
 
@@ -51,29 +52,30 @@ public static class FebScene
         Debug.Log("FEB: wrote " + Output);
     }
 
-    // Menu rows are anchored in a column; squeeze them by 10% and put a Track button on top.
+    // The Scene Light row is of no use on a racetrack; it becomes the Track button.
     static void AddTrackButton(Transform menu)
     {
-        foreach (RectTransform row in menu)
-        {
-            row.anchorMin = new Vector2(row.anchorMin.x, 0.025f + (row.anchorMin.y - 0.025f) * 0.9f);
-            row.anchorMax = new Vector2(row.anchorMax.x, 0.025f + (row.anchorMax.y - 0.025f) * 0.9f);
-        }
-        var template = menu.Find("Camera Switch").gameObject;
-        var row2 = Object.Instantiate(template, menu);
-        row2.name = "Track";
-        Object.DestroyImmediate(row2.GetComponent<CameraSwitch>());
-        var rect = row2.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(rect.anchorMin.x, 0.835f);
-        rect.anchorMax = new Vector2(rect.anchorMax.x, 0.925f);
-
-        var label = row2.GetComponentInChildren<Text>();
+        var row = menu.Find("Scene Light").gameObject;
+        row.name = "Track";
+        Object.DestroyImmediate(row.GetComponent<SceneLighting>());
+        var label = row.GetComponentInChildren<Text>();
         label.text = "Track";
-        var trackMenu = row2.AddComponent<FebTrackMenu>();
+        var trackMenu = row.AddComponent<FebTrackMenu>();
         trackMenu.Label = label;
-        var button = row2.GetComponent<Button>();
+        var button = row.GetComponent<Button>();
         while (button.onClick.GetPersistentEventCount() > 0) UnityEventTools.RemovePersistentListener(button.onClick, 0);
         UnityEventTools.AddPersistentListener(button.onClick, new UnityAction(trackMenu.NextTrack));
+    }
+
+    static Sprite LoadSprite(string path)
+    {
+        var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+        if (importer.textureType != TextureImporterType.Sprite)
+        {
+            importer.textureType = TextureImporterType.Sprite;
+            importer.SaveAndReimport();
+        }
+        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
     }
 
     static T Find<T>(string name) where T : Component

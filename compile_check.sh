@@ -30,7 +30,7 @@ NETSTD=$(ls "$E"/NetStandard/ref/2.1.0/*.dll | sed 's/^/-r:/')
   -define:UNITY_EDITOR -define:UNITY_2022_3 -define:UNITY_STANDALONE $NETSTD $REFS \
   $(find "$UGUI/Runtime" -name "*.cs" -not -name AssemblyInfo.cs) "$OUT/stubs.cs" \
   Assets/FEB/Scripts/*.cs Assets/FEB/Editor/*.cs \
-  Assets/Scripts/{LapTimer,FollowTarget,CLIManager,SocketConnection,DrivingMode,CameraSwitch,LIDAR,VehicleController,AutomobileController,AbstractTargetFollower,WheelEffects,WheelEncoder,GPS,IMU,FrameGrabber}.cs \
+  Assets/Scripts/{LapTimer,FollowTarget,CLIManager,SocketConnection,DrivingMode,CameraSwitch,SceneLighting,LIDAR,VehicleController,AutomobileController,AbstractTargetFollower,WheelEffects,WheelEncoder,GPS,IMU,FrameGrabber}.cs \
   > "$OUT/csc.log" 2>&1 || { grep -E "error" "$OUT/csc.log"; exit 1; }
 echo "FEB scripts compile"
 rm -rf "$OUT"
