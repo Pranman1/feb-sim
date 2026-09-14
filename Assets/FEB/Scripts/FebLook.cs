@@ -12,8 +12,8 @@ using UnityEngine.Rendering.HighDefinition;
       walls    white air ducts with FEB blue bands (UV texture on the tube mesh)
       lines    a chequered start/finish line, gold marks at every checkpoint
       sky      a gradient sky and a warmer, lower sun
-      livery   the deck (wing and rear panel) wrapped blue with gold edge streaks, chassis plate and
-               crash members gold, the rear decals on a white plate
+      livery   wing, endplates and rear panel wrapped blue with gold edge streaks, the base plate gold
+               with blue edge streaks, crash members likewise, the rear decals on a white plate
 
     Selected with --look visual|simple, or the menu's Look button; remembered between runs.
 */
@@ -275,8 +275,8 @@ public class FebLook : MonoBehaviour
             var size = renderer.bounds.size;
             float extent = Mathf.Max(size.x, size.y, size.z);
             Color? color = null;
-            if (part.StartsWith("Platform Deck") || part.StartsWith("Rear Shock Tower")) { Wrap(renderer, car); continue; }   // the deck, and the wing with its endplates and rear panel
-            if (part.StartsWith("Chassis") || part.Contains("Crash Member") || part.Contains("Bumper")) color = Gold;
+            if (part.StartsWith("Platform Deck") || part.StartsWith("Rear Shock Tower")) { Wrap(renderer, car, Blue, Gold); continue; }   // the deck, and the wing with its endplates and rear panel
+            if (part.StartsWith("Chassis") || part.Contains("Crash Member") || part.Contains("Bumper")) { Wrap(renderer, car, Gold, Blue); continue; }   // base plate and crash members: gold with blue edge streaks
             else if (part.Contains("Bulkhead") || extent > 0.20f) color = Blue;
             if (color == null) continue;
             var materials = renderer.materials;      // instances
@@ -290,7 +290,7 @@ public class FebLook : MonoBehaviour
     // renderer's own copy of the mesh planar coordinates from the car's axes (u across, v along)
     // and a wrap texture: blue with gold streaks along the outer edges and the trailing edge.
     // Only the rendered copy changes; colliders and the prefab asset are untouched.
-    static void Wrap(MeshRenderer renderer, Transform car)
+    static void Wrap(MeshRenderer renderer, Transform car, Color baseColor, Color edgeColor)
     {
         var filter = renderer.GetComponent<MeshFilter>();
         if (filter == null || filter.sharedMesh == null) return;
@@ -314,17 +314,20 @@ public class FebLook : MonoBehaviour
         foreach (var m in materials)
         {
             SetColor(m, Color.white);
-            if (m.HasProperty("_BaseColorMap")) { m.SetTexture("_BaseColorMap", WrapTexture()); m.SetTextureScale("_BaseColorMap", Vector2.one); }
+            if (m.HasProperty("_BaseColorMap")) { m.SetTexture("_BaseColorMap", WrapTexture(baseColor, edgeColor)); m.SetTextureScale("_BaseColorMap", Vector2.one); }
         }
         renderer.materials = materials;
     }
 
-    static Texture2D WrapTexture()
+    static readonly Dictionary<(Color, Color), Texture2D> wraps = new Dictionary<(Color, Color), Texture2D>();
+
+    static Texture2D WrapTexture(Color baseColor, Color edgeColor)
     {
+        if (wraps.TryGetValue((baseColor, edgeColor), out var cached)) return cached;
         const int size = 512;
-        var tex = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "Deck wrap", wrapMode = TextureWrapMode.Clamp };
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "Wrap", wrapMode = TextureWrapMode.Clamp };
         var pixels = new Color32[size * size];
-        Color32 blue = Blue, gold = Gold;
+        Color32 blue = baseColor, gold = edgeColor;
         for (int y = 0; y < size; y++)
         {
             float v = (float)y / size;                          // 0 = rear edge, 1 = nose
@@ -339,6 +342,7 @@ public class FebLook : MonoBehaviour
         }
         tex.SetPixels32(pixels);
         tex.Apply(true);
+        wraps[(baseColor, edgeColor)] = tex;
         return tex;
     }
 
