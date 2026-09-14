@@ -52,29 +52,39 @@ public static class FebScene
         Debug.Log("FEB: wrote " + Output);
     }
 
-    // The Scene Light row is of no use on a racetrack; track and car-count dropdowns take its place.
+    // Menu rows keep the upstream button style. Scene Light goes (no use on a racetrack); Track and
+    // Cars rows come in under Driving Mode, and the button column is re-spaced to fit eight rows.
     static void AddTrackButton(Transform menu)
     {
-        var old = menu.Find("Scene Light");
-        var rect = old.GetComponent<RectTransform>();
-        float top = rect.anchorMax.y, bottom = rect.anchorMin.y, mid = 0.5f * (top + bottom);
+        Object.DestroyImmediate(menu.Find("Scene Light").gameObject);
         var picker = menu.gameObject.AddComponent<FebTrackMenu>();
-        picker.TrackPicker = MakeDropdown(menu, "Track", mid + 0.005f, top - 0.005f);
-        picker.CarsPicker = MakeDropdown(menu, "Cars", bottom + 0.005f, mid - 0.005f);
-        Object.DestroyImmediate(old.gameObject);
+        var template = menu.Find("Camera Switch").gameObject;
+        var track = CloneRow(template, "Track", picker.NextTrack);
+        var cars = CloneRow(template, "Cars", picker.NextCars);
+        picker.TrackLabel = track.GetComponentInChildren<Text>();
+        picker.CarsLabel = cars.GetComponentInChildren<Text>();
+
+        string[] order = { "Connection", "Driving Mode", "Track", "Cars", "Camera Switch", "Rendering Quality", "Scene Reset", "Quit" };
+        const float bottom = 0.025f, top = 0.725f;
+        float height = (top - bottom) / order.Length;
+        for (int i = 0; i < order.Length; i++)
+        {
+            var rect = menu.Find(order[i]).GetComponent<RectTransform>();
+            float yMax = top - i * height;
+            rect.anchorMin = new Vector2(rect.anchorMin.x, yMax - height);
+            rect.anchorMax = new Vector2(rect.anchorMax.x, yMax);
+        }
     }
 
-    static Dropdown MakeDropdown(Transform menu, string name, float yMin, float yMax)
+    static GameObject CloneRow(GameObject template, string name, UnityAction onClick)
     {
-        var go = DefaultControls.CreateDropdown(new DefaultControls.Resources());
-        go.name = name;
-        go.transform.SetParent(menu, false);
-        var r = go.GetComponent<RectTransform>();
-        r.anchorMin = new Vector2(0.1f, yMin);
-        r.anchorMax = new Vector2(0.9f, yMax);
-        r.offsetMin = r.offsetMax = Vector2.zero;
-        go.GetComponentInChildren<Text>().fontSize = 20;
-        return go.GetComponent<Dropdown>();
+        var row = Object.Instantiate(template, template.transform.parent);
+        row.name = name;
+        Object.DestroyImmediate(row.GetComponent<CameraSwitch>());
+        var button = row.GetComponent<Button>();
+        while (button.onClick.GetPersistentEventCount() > 0) UnityEventTools.RemovePersistentListener(button.onClick, 0);
+        UnityEventTools.AddPersistentListener(button.onClick, onClick);
+        return row;
     }
 
     static Sprite LoadSprite(string path)

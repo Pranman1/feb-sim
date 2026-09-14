@@ -50,6 +50,14 @@ public class Socket : MonoBehaviour
     private Vector3 CoSimPosition;
     private Quaternion CoSimRotation;
 
+    // FEB: a bridge that drives fewer cars than the scene has (e.g. one devkit, two cars) leaves
+    // the other cars' fields out; treat missing fields as "no command" instead of throwing.
+    static string Field(JSONObject json, string key, string fallback)
+    {
+        JSONObject field = json.GetField(key);
+        return field == null ? fallback : field.str;
+    }
+
     // Use this for initialization
     void Start()
     {
@@ -101,15 +109,15 @@ public class Socket : MonoBehaviour
         // Set time of day
         if(TimeOfDayAPI && (TimeOfDay.Length !=0))
         {
-            TimeOfDay[0].automaticUpdate = bool.Parse(jsonObject.GetField("Auto Time").str); // Set automatic update
-            TimeOfDay[0].timeScale = float.Parse(jsonObject.GetField("Time Scale").str); // Set time scale
-            TimeOfDay[0].timeOfDay = float.Parse(jsonObject.GetField("Time").str); // Set time of day
+            TimeOfDay[0].automaticUpdate = bool.Parse(Field(jsonObject, "Auto Time", "0")); // Set automatic update
+            TimeOfDay[0].timeScale = float.Parse(Field(jsonObject, "Time Scale", "0")); // Set time scale
+            TimeOfDay[0].timeOfDay = float.Parse(Field(jsonObject, "Time", "0")); // Set time of day
         }
 
         // Set weather
         if(WeatherAPI && (Weather.Length !=0))
         {
-            weather = int.Parse(jsonObject.GetField("Weather").str); // Set weather
+            weather = int.Parse(Field(jsonObject, "Weather", "0")); // Set weather
             if(weather == 0) Weather[0].weatherPreset = WeatherManager.WeatherPreset.Custom;
             else if(weather == 1) Weather[0].weatherPreset = WeatherManager.WeatherPreset.Sunny;
             else if(weather == 2) Weather[0].weatherPreset = WeatherManager.WeatherPreset.Cloudy;
@@ -119,10 +127,10 @@ public class Socket : MonoBehaviour
             else if(weather == 6) Weather[0].weatherPreset = WeatherManager.WeatherPreset.HeavyRain;
             else if(weather == 7) Weather[0].weatherPreset = WeatherManager.WeatherPreset.LightSnow;
             else if(weather == 8) Weather[0].weatherPreset = WeatherManager.WeatherPreset.HeavySnow;
-            Weather[0].CloudIntensity = float.Parse(jsonObject.GetField("Clouds").str); // Set cloud intensity
-            Weather[0].FogIntensity = float.Parse(jsonObject.GetField("Fog").str); // Set fog intensity
-            Weather[0].RainIntensity = float.Parse(jsonObject.GetField("Rain").str); // Set rain intensity
-            Weather[0].SnowIntensity = float.Parse(jsonObject.GetField("Snow").str); // Set snow intensity
+            Weather[0].CloudIntensity = float.Parse(Field(jsonObject, "Clouds", "0")); // Set cloud intensity
+            Weather[0].FogIntensity = float.Parse(Field(jsonObject, "Fog", "0")); // Set fog intensity
+            Weather[0].RainIntensity = float.Parse(Field(jsonObject, "Rain", "0")); // Set rain intensity
+            Weather[0].SnowIntensity = float.Parse(Field(jsonObject, "Snow", "0")); // Set snow intensity
         }
 
         // Write data to vehicles
@@ -134,20 +142,20 @@ public class Socket : MonoBehaviour
                 {
                     if (ResetManagers.Length != 0)
                     {
-                        ResetManagers[i].ResetFlag = bool.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Reset").str); // Set reset flag
+                        ResetManagers[i].ResetFlag = bool.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Reset", "False")); // Set reset flag
                     }
                     if (CoSimManagers.Length != 0)
                     {
-                        if(int.Parse(jsonObject.GetField("V"+(i+1).ToString()+" CoSim").str) == 1)
+                        if(int.Parse(Field(jsonObject, "V"+(i+1).ToString()+" CoSim", "0")) == 1)
                         {
                             // VehicleRigidBodies[i].isKinematic = true;
-                            CoSimPosition.x = - float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" PosY").str); // Set position X-component
-                            CoSimPosition.y = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" PosZ").str); // Set position Y-component
-                            CoSimPosition.z = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" PosX").str); // Set position Z-component
-                            CoSimRotation.x = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" RotY").str); // Set rotation X-component
-                            CoSimRotation.y = -float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" RotZ").str); // Set rotation Y-component
-                            CoSimRotation.z = -float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" RotX").str); // Set rotation Z-component
-                            CoSimRotation.w = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" RotW").str); // Set rotation W-component
+                            CoSimPosition.x = - float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" PosY", "0")); // Set position X-component
+                            CoSimPosition.y = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" PosZ", "0")); // Set position Y-component
+                            CoSimPosition.z = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" PosX", "0")); // Set position Z-component
+                            CoSimRotation.x = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" RotY", "0")); // Set rotation X-component
+                            CoSimRotation.y = -float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" RotZ", "0")); // Set rotation Y-component
+                            CoSimRotation.z = -float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" RotX", "0")); // Set rotation Z-component
+                            CoSimRotation.w = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" RotW", "0")); // Set rotation W-component
                             CoSimManagers[i].CoSimTimer = 0.0f;
                             CoSimManagers[i].CoSimPosition = CoSimPosition;
                             CoSimManagers[i].CoSimRotation = CoSimRotation;
@@ -159,13 +167,13 @@ public class Socket : MonoBehaviour
                             // VehicleRigidBodies[i].isKinematic = false;
                             if (TwistControllers.Length != 0)
                             {
-                                TwistControllers[i].vSetpoint = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Linear Velocity").str); // Set linear velocity
-                                TwistControllers[i].wSetpoint = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Angular Velocity").str); // Set angular velocity
+                                TwistControllers[i].vSetpoint = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Linear Velocity", "0")); // Set linear velocity
+                                TwistControllers[i].wSetpoint = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Angular Velocity", "0")); // Set angular velocity
                             }
                             else
                             {
-                                VehicleControllers[i].CurrentThrottle = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Throttle").str); // Set throttle
-                                VehicleControllers[i].CurrentSteeringAngle = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Steering").str); // Set steering angle
+                                VehicleControllers[i].CurrentThrottle = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Throttle", "0")); // Set throttle
+                                VehicleControllers[i].CurrentSteeringAngle = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Steering", "0")); // Set steering angle
                             }
                         }
                     }
@@ -174,26 +182,26 @@ public class Socket : MonoBehaviour
                         // VehicleRigidBodies[i].isKinematic = false;
                         if (TwistControllers.Length != 0)
                         {
-                            TwistControllers[i].vSetpoint = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Linear Velocity").str); // Set linear velocity
-                            TwistControllers[i].wSetpoint = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Angular Velocity").str); // Set angular velocity
+                            TwistControllers[i].vSetpoint = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Linear Velocity", "0")); // Set linear velocity
+                            TwistControllers[i].wSetpoint = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Angular Velocity", "0")); // Set angular velocity
                         }
                         else
                         {
-                            VehicleControllers[i].CurrentThrottle = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Throttle").str); // Set throttle
-                            VehicleControllers[i].CurrentSteeringAngle = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Steering").str); // Set steering angle
+                            VehicleControllers[i].CurrentThrottle = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Throttle", "0")); // Set throttle
+                            VehicleControllers[i].CurrentSteeringAngle = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Steering", "0")); // Set steering angle
                         }
                     }
                     if(VehicleLightings.Length != 0)
                     {
-                        VehicleLightings[i].Headlights = int.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Headlights").str); // Set headlights
-                        VehicleLightings[i].Indicators = int.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Indicators").str); // Set indicators
+                        VehicleLightings[i].Headlights = int.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Headlights", "0")); // Set headlights
+                        VehicleLightings[i].Indicators = int.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Indicators", "0")); // Set indicators
                     }
                     if(TireFrictions.Length != 0)
                     {
-                        TireFrictions[(i*4)+0].frictionCoefficient = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" u_FL").str); // Set FL tire friction
-                        TireFrictions[(i*4)+1].frictionCoefficient = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" u_FR").str); // Set FR tire friction
-                        TireFrictions[(i*4)+2].frictionCoefficient = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" u_RL").str); // Set RL tire friction
-                        TireFrictions[(i*4)+3].frictionCoefficient = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" u_RR").str); // Set RR tire friction
+                        TireFrictions[(i*4)+0].frictionCoefficient = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" u_FL", "0")); // Set FL tire friction
+                        TireFrictions[(i*4)+1].frictionCoefficient = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" u_FR", "0")); // Set FR tire friction
+                        TireFrictions[(i*4)+2].frictionCoefficient = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" u_RL", "0")); // Set RL tire friction
+                        TireFrictions[(i*4)+3].frictionCoefficient = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" u_RR", "0")); // Set RR tire friction
                     }
                 }
             }
@@ -206,20 +214,20 @@ public class Socket : MonoBehaviour
                 {
                     if (ResetManagers.Length != 0)
                     {
-                        ResetManagers[i].ResetFlag = bool.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Reset").str); // Set reset flag
+                        ResetManagers[i].ResetFlag = bool.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Reset", "False")); // Set reset flag
                     }
                     if (CoSimManagers.Length != 0)
                     {
-                        if(int.Parse(jsonObject.GetField("V"+(i+1).ToString()+" CoSim").str) == 1)
+                        if(int.Parse(Field(jsonObject, "V"+(i+1).ToString()+" CoSim", "0")) == 1)
                         {
                             // VehicleRigidBodies[i].isKinematic = true;
-                            CoSimPosition.x = - float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" PosY").str); // Set position X-component
-                            CoSimPosition.y = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" PosZ").str); // Set position Y-component
-                            CoSimPosition.z = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" PosX").str); // Set position Z-component
-                            CoSimRotation.x = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" RotY").str); // Set rotation X-component
-                            CoSimRotation.y = -float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" RotZ").str); // Set rotation Y-component
-                            CoSimRotation.z = -float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" RotX").str); // Set rotation Z-component
-                            CoSimRotation.w = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" RotW").str); // Set rotation W-component
+                            CoSimPosition.x = - float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" PosY", "0")); // Set position X-component
+                            CoSimPosition.y = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" PosZ", "0")); // Set position Y-component
+                            CoSimPosition.z = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" PosX", "0")); // Set position Z-component
+                            CoSimRotation.x = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" RotY", "0")); // Set rotation X-component
+                            CoSimRotation.y = -float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" RotZ", "0")); // Set rotation Y-component
+                            CoSimRotation.z = -float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" RotX", "0")); // Set rotation Z-component
+                            CoSimRotation.w = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" RotW", "0")); // Set rotation W-component
                             CoSimManagers[i].CoSimTimer = 0.0f;
                             CoSimManagers[i].CoSimPosition = CoSimPosition;
                             CoSimManagers[i].CoSimRotation = CoSimRotation;
@@ -231,15 +239,15 @@ public class Socket : MonoBehaviour
                             // VehicleRigidBodies[i].isKinematic = false;
                             if (TwistControllers.Length != 0)
                             {
-                                TwistControllers[i].vSetpoint = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Linear Velocity").str); // Set linear velocity
-                                TwistControllers[i].wSetpoint = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Angular Velocity").str); // Set angular velocity
+                                TwistControllers[i].vSetpoint = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Linear Velocity", "0")); // Set linear velocity
+                                TwistControllers[i].wSetpoint = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Angular Velocity", "0")); // Set angular velocity
                             }
                             else
                             {
-                                AutomobileControllers[i].CurrentThrottle = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Throttle").str); // Set throttle
-                                AutomobileControllers[i].CurrentSteeringAngle = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Steering").str); // Set steering angle
-                                AutomobileControllers[i].CurrentBrake = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Brake").str); // Set brake
-                                AutomobileControllers[i].CurrentHandbrake = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Handbrake").str); // Set handbrake
+                                AutomobileControllers[i].CurrentThrottle = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Throttle", "0")); // Set throttle
+                                AutomobileControllers[i].CurrentSteeringAngle = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Steering", "0")); // Set steering angle
+                                AutomobileControllers[i].CurrentBrake = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Brake", "0")); // Set brake
+                                AutomobileControllers[i].CurrentHandbrake = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Handbrake", "0")); // Set handbrake
                             }
                         }
                     }
@@ -248,32 +256,32 @@ public class Socket : MonoBehaviour
                         // VehicleRigidBodies[i].isKinematic = false;
                         if (TwistControllers.Length != 0)
                         {
-                            TwistControllers[i].vSetpoint = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Linear Velocity").str); // Set linear velocity
-                            TwistControllers[i].wSetpoint = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Angular Velocity").str); // Set angular velocity
+                            TwistControllers[i].vSetpoint = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Linear Velocity", "0")); // Set linear velocity
+                            TwistControllers[i].wSetpoint = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Angular Velocity", "0")); // Set angular velocity
                         }
                         else
                         {
-                            AutomobileControllers[i].CurrentThrottle = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Throttle").str); // Set throttle
-                            AutomobileControllers[i].CurrentSteeringAngle = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Steering").str); // Set steering angle
-                            AutomobileControllers[i].CurrentBrake = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Brake").str); // Set brake
-                            AutomobileControllers[i].CurrentHandbrake = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Handbrake").str); // Set handbrake
+                            AutomobileControllers[i].CurrentThrottle = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Throttle", "0")); // Set throttle
+                            AutomobileControllers[i].CurrentSteeringAngle = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Steering", "0")); // Set steering angle
+                            AutomobileControllers[i].CurrentBrake = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Brake", "0")); // Set brake
+                            AutomobileControllers[i].CurrentHandbrake = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Handbrake", "0")); // Set handbrake
                         }
                     }
                     if(CarLightings.Length != 0)
                     {
-                        CarLightings[i].Headlights = int.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Headlights").str); // Set headlights
-                        CarLightings[i].Indicators = int.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Indicators").str); // Set indicators
+                        CarLightings[i].Headlights = int.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Headlights", "0")); // Set headlights
+                        CarLightings[i].Indicators = int.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Indicators", "0")); // Set indicators
                     }
                     if(ROVLightings.Length != 0)
                     {
-                        ROVLightings[i].Headlights = int.Parse(jsonObject.GetField("V"+(i+1).ToString()+" Headlights").str); // Set headlights
+                        ROVLightings[i].Headlights = int.Parse(Field(jsonObject, "V"+(i+1).ToString()+" Headlights", "0")); // Set headlights
                     }
                     if(TireFrictions.Length != 0)
                     {
-                        TireFrictions[(i*4)+0].frictionCoefficient = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" u_FL").str); // Set FL tire friction
-                        TireFrictions[(i*4)+1].frictionCoefficient = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" u_FR").str); // Set FR tire friction
-                        TireFrictions[(i*4)+2].frictionCoefficient = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" u_RL").str); // Set RL tire friction
-                        TireFrictions[(i*4)+3].frictionCoefficient = float.Parse(jsonObject.GetField("V"+(i+1).ToString()+" u_RR").str); // Set RR tire friction
+                        TireFrictions[(i*4)+0].frictionCoefficient = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" u_FL", "0")); // Set FL tire friction
+                        TireFrictions[(i*4)+1].frictionCoefficient = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" u_FR", "0")); // Set FR tire friction
+                        TireFrictions[(i*4)+2].frictionCoefficient = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" u_RL", "0")); // Set RL tire friction
+                        TireFrictions[(i*4)+3].frictionCoefficient = float.Parse(Field(jsonObject, "V"+(i+1).ToString()+" u_RR", "0")); // Set RR tire friction
                     }
                 }
             }
@@ -284,7 +292,7 @@ public class Socket : MonoBehaviour
         {
             for(int i=0;i<TrafficLightControllers.Length;i++)
             {
-                TrafficLightControllers[i].CurrentState = int.Parse(jsonObject.GetField("TL"+(i+1).ToString()+" State").str); // Set traffic light
+                TrafficLightControllers[i].CurrentState = int.Parse(Field(jsonObject, "TL"+(i+1).ToString()+" State", "0")); // Set traffic light
             }
         }
 
