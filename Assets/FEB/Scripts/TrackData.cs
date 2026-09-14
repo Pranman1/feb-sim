@@ -19,6 +19,7 @@ public class TrackData
     public int version;
     public string name;
     public string direction;
+    public int max_cars;        // 0 or missing = no limit
     public float length;
     public float[] centreline;
     public TrackCheckpoint[] checkpoints; // checkpoints[0] is the finish line

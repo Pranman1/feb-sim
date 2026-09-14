@@ -28,7 +28,10 @@ public class FebTrackMenu : MonoBehaviour
 
     public void NextCars()
     {
-        Reload(FebLaunch.Track, FebLaunch.Cars % MaxCars + 1);
+        var loader = FindObjectOfType<TrackLoader>();
+        int limit = loader != null && loader.Track != null && loader.Track.max_cars > 0 ? Mathf.Min(MaxCars, loader.Track.max_cars) : MaxCars;
+        if (limit <= 1) return;
+        Reload(FebLaunch.Track, FebLaunch.Cars % limit + 1);
     }
 
     static void Reload(string track, int cars)

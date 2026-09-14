@@ -46,7 +46,8 @@ public class TrackLoader : MonoBehaviour
         }
         FebLaunch.Track = Folder;
         Track = TrackData.Load(Folder);
-        Debug.Log("FEB: loading track '" + Track.name + "' from " + Folder);
+        if (Track.max_cars > 0 && FebLaunch.Cars > Track.max_cars) FebLaunch.Cars = Track.max_cars;
+        Debug.Log("FEB: loading track '" + Track.name + "' from " + Folder + " with " + FebLaunch.Cars + " car(s)");
 
         var root = new GameObject("Track");
         root.transform.SetParent(transform, false);
