@@ -12,8 +12,8 @@ using UnityEngine.Rendering.HighDefinition;
       walls    white air ducts with FEB blue bands (UV texture on the tube mesh)
       lines    a chequered start/finish line, gold marks at every checkpoint
       sky      a gradient sky and a warmer, lower sun
-      livery   the deck (wing and rear panel) in FEB blue, chassis plate and crash members in gold,
-               the rear decals on a white plate
+      livery   the deck (wing and rear panel) wrapped blue with gold edge streaks, chassis plate and
+               crash members gold, the rear decals on a white plate
 
     Selected with --look visual|simple, or the menu's Look button; remembered between runs.
 */
@@ -275,14 +275,71 @@ public class FebLook : MonoBehaviour
             var size = renderer.bounds.size;
             float extent = Mathf.Max(size.x, size.y, size.z);
             Color? color = null;
+            if (part.StartsWith("Platform Deck") || part.StartsWith("Rear Shock Tower")) { Wrap(renderer, car); continue; }   // the deck, and the wing with its endplates and rear panel
             if (part.StartsWith("Chassis") || part.Contains("Crash Member") || part.Contains("Bumper")) color = Gold;
-            else if (part.StartsWith("Platform Deck") || part.Contains("Bulkhead") || extent > 0.20f) color = Blue;
+            else if (part.Contains("Bulkhead") || extent > 0.20f) color = Blue;
             if (color == null) continue;
             var materials = renderer.materials;      // instances
             foreach (var m in materials) SetColor(m, color.Value);
             renderer.materials = materials;
         }
         DecalPlate(car);
+    }
+
+    // The deck and the rear tower (wing, endplates, rear panel) are CAD meshes without texture coordinates. Give the
+    // renderer's own copy of the mesh planar coordinates from the car's axes (u across, v along)
+    // and a wrap texture: blue with gold streaks along the outer edges and the trailing edge.
+    // Only the rendered copy changes; colliders and the prefab asset are untouched.
+    static void Wrap(MeshRenderer renderer, Transform car)
+    {
+        var filter = renderer.GetComponent<MeshFilter>();
+        if (filter == null || filter.sharedMesh == null) return;
+        var mesh = filter.mesh;                     // instance for this renderer
+        var vertices = mesh.vertices;
+        var local = new Vector3[vertices.Length];
+        var min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+        var max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            local[i] = car.InverseTransformPoint(renderer.transform.TransformPoint(vertices[i]));
+            min = Vector3.Min(min, local[i]);
+            max = Vector3.Max(max, local[i]);
+        }
+        var uv = new Vector2[vertices.Length];
+        for (int i = 0; i < vertices.Length; i++)
+            uv[i] = new Vector2(Mathf.InverseLerp(min.x, max.x, local[i].x), Mathf.InverseLerp(min.z, max.z, local[i].z));
+        mesh.uv = uv;
+
+        var materials = renderer.materials;
+        foreach (var m in materials)
+        {
+            SetColor(m, Color.white);
+            if (m.HasProperty("_BaseColorMap")) { m.SetTexture("_BaseColorMap", WrapTexture()); m.SetTextureScale("_BaseColorMap", Vector2.one); }
+        }
+        renderer.materials = materials;
+    }
+
+    static Texture2D WrapTexture()
+    {
+        const int size = 512;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "Deck wrap", wrapMode = TextureWrapMode.Clamp };
+        var pixels = new Color32[size * size];
+        Color32 blue = Blue, gold = Gold;
+        for (int y = 0; y < size; y++)
+        {
+            float v = (float)y / size;                          // 0 = rear edge, 1 = nose
+            float streak = 0.045f + 0.075f * (1f - v);          // edge streaks widen toward the rear
+            for (int x = 0; x < size; x++)
+            {
+                float u = (float)x / size;                      // 0 = driver's right edge, 1 = left edge
+                bool edge = u < streak || u > 1f - streak;
+                bool trailing = v < 0.035f;
+                pixels[y * size + x] = edge || trailing ? gold : blue;
+            }
+        }
+        tex.SetPixels32(pixels);
+        tex.Apply(true);
+        return tex;
     }
 
     // The rear decals sit on the (now blue) deck: give them a white plate so both colours of the mark read.
