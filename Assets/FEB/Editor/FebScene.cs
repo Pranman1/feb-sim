@@ -60,8 +60,8 @@ public static class FebScene
         Object.DestroyImmediate(menu.Find("Scene Light").gameObject);
         var picker = menu.gameObject.AddComponent<FebTrackMenu>();
         var template = menu.Find("Camera Switch").gameObject;
-        var track = CloneRow(template, "Track", picker.NextTrack);
-        var cars = CloneRow(template, "Cars", picker.NextCars);
+        var track = CloneRow(template, "Track", picker.NextTrack, "Assets/FEB/Sprites/Track Button.png");
+        var cars = CloneRow(template, "Cars", picker.NextCars, "Assets/FEB/Sprites/Cars Button.png");
         picker.TrackLabel = track.GetComponentInChildren<Text>();
         picker.CarsLabel = cars.GetComponentInChildren<Text>();
 
@@ -77,10 +77,11 @@ public static class FebScene
         }
     }
 
-    static GameObject CloneRow(GameObject template, string name, UnityAction onClick)
+    static GameObject CloneRow(GameObject template, string name, UnityAction onClick, string iconPath)
     {
         var row = Object.Instantiate(template, template.transform.parent);
         row.name = name;
+        row.GetComponent<Image>().sprite = LoadSprite(iconPath);   // the row's own Image is its icon
         Object.DestroyImmediate(row.GetComponent<CameraSwitch>());
         var button = row.GetComponent<Button>();
         while (button.onClick.GetPersistentEventCount() > 0) UnityEventTools.RemovePersistentListener(button.onClick, 0);
