@@ -241,8 +241,11 @@ public class TrackLoader : MonoBehaviour
         {
             var clone = Instantiate(original, original.transform.parent);
             clone.name = "RoboRacer " + (i + 1);
+            // sensor cameras render to their own texture; viewing cameras (Driver's Eye) belong to car 0 only
             foreach (var cam in clone.GetComponentsInChildren<Camera>(true))
                 if (cam.targetTexture != null) cam.targetTexture = new RenderTexture(cam.targetTexture);
+                else cam.gameObject.SetActive(false);
+            foreach (var listener in clone.GetComponentsInChildren<AudioListener>(true)) listener.enabled = false;
 
             var reset = ResetManager.gameObject.AddComponent<ResetManager>();
             reset.Vehicles = new[] { clone.transform };
