@@ -31,6 +31,7 @@ public class TrackLoader : MonoBehaviour
 
     public TrackData Track { get; private set; }
     public string Folder { get; private set; }
+    public List<MeshRenderer> WallRenderers { get; } = new List<MeshRenderer>();   // for the Visual look's banding
 
     const int RingSegments = 12;
     const float CheckpointHeight = 1.0f;
@@ -61,6 +62,10 @@ public class TrackLoader : MonoBehaviour
         if (TitleLabel != null) TitleLabel.text = "FEB Simulator  |  " + Track.name;
         var ghost = GetComponent<GhostLap>();
         if (ghost != null && Vehicles.Length > 0) ghost.Bind(Vehicles[0], Folder);
+        var hud = GetComponent<FebHud>();
+        if (hud != null && Vehicles.Length > 0) hud.Bind(Vehicles[0]);
+        var look = GetComponent<FebLook>();
+        if (look != null) look.Apply(this);
     }
 
     // ------------------------------------------------------------------ walls
@@ -76,7 +81,9 @@ public class TrackLoader : MonoBehaviour
             go.transform.SetParent(parent, false);
             var mesh = TubeMesh(wall.points, radius);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = material;
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            WallRenderers.Add(renderer);
             go.AddComponent<MeshCollider>().sharedMesh = mesh;
         }
     }
@@ -90,16 +97,20 @@ public class TrackLoader : MonoBehaviour
 
         var vertices = new Vector3[n * RingSegments];
         var normals = new Vector3[n * RingSegments];
+        var uv = new Vector2[n * RingSegments];          // u: metres along the duct, v: around it
+        float along = 0f;
         for (int i = 0; i < n; i++)
         {
             Vector3 tangent = (centres[(i + 1) % n] - centres[(i - 1 + n) % n]).normalized;
             Vector3 side = Vector3.Cross(Vector3.up, tangent).normalized;
+            if (i > 0) along += Vector3.Distance(centres[i], centres[i - 1]);
             for (int k = 0; k < RingSegments; k++)
             {
                 float a = 2f * Mathf.PI * k / RingSegments;
                 Vector3 dir = Mathf.Cos(a) * side + Mathf.Sin(a) * Vector3.up;
                 vertices[i * RingSegments + k] = centres[i] + radius * dir;
                 normals[i * RingSegments + k] = dir;
+                uv[i * RingSegments + k] = new Vector2(along, (float)k / RingSegments);
             }
         }
         var triangles = new int[n * RingSegments * 6];
@@ -120,6 +131,7 @@ public class TrackLoader : MonoBehaviour
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         mesh.vertices = vertices;
         mesh.normals = normals;
+        mesh.uv = uv;
         mesh.triangles = triangles;
         mesh.RecalculateBounds();
         return mesh;

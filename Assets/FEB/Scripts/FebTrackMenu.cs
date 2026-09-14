@@ -5,18 +5,27 @@ using UnityEngine.UI;
 
 /*
     Menu rows in the simulator's button style: "Track: <name>" cycles through the available
-    tracks, "Cars: <n>" through 1..4 cars. Either reloads the scene.
+    tracks, "Cars: <n>" through 1..4 cars, "Look: Visual|Simple" between the dressed scene and
+    the bare one (for weak machines, or taste). Each reloads the scene.
 */
 public class FebTrackMenu : MonoBehaviour
 {
     public Text TrackLabel;
     public Text CarsLabel;
+    public Text LookLabel;
     const int MaxCars = 4;
 
     void Start()
     {
         TrackLabel.text = "Track: " + (FebLaunch.Track != null ? Path.GetFileName(FebLaunch.Track) : "?");
         CarsLabel.text = "Cars: " + FebLaunch.Cars;
+        if (LookLabel != null) LookLabel.text = "Look: " + (FebLook.Visual ? "Visual" : "Simple");
+    }
+
+    public void NextLook()
+    {
+        FebLaunch.Look = FebLook.Visual ? "simple" : "visual";
+        Reload(FebLaunch.Track, FebLaunch.Cars);
     }
 
     public void NextTrack()

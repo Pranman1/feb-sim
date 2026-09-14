@@ -25,9 +25,10 @@ for cls in ("CoSimManager", "WeatherManager", "TimeOfDay", "TwistController",
 PY
 REFS=$(ls "$E"/Managed/UnityEngine/*.dll | grep -vE "\.pdb|Cecil|il2cpp|Test|Analytics|Purchasing|Cloud|Collab" | sed 's/^/-r:/')
 NETSTD=$(ls "$E"/NetStandard/ref/2.1.0/*.dll | sed 's/^/-r:/')
+PIPE=$(ls Library/ScriptAssemblies/Unity.RenderPipelines.{Core,HighDefinition}.Runtime.dll | sed 's/^/-r:/')
 "$E/NetCoreRuntime/dotnet" "$E/DotNetSdkRoslyn/csc.dll" -nologo -target:library -out:"$OUT/feb.dll" \
   -nowarn:CS0618,CS0649,CS0414,CS0108,CS0109,CS0162,CS0168,CS0169,CS0219 \
-  -define:UNITY_EDITOR -define:UNITY_2022_3 -define:UNITY_STANDALONE $NETSTD $REFS \
+  -define:UNITY_EDITOR -define:UNITY_2022_3 -define:UNITY_STANDALONE $NETSTD $REFS $PIPE \
   $(find "$UGUI/Runtime" -name "*.cs" -not -name AssemblyInfo.cs) "$OUT/stubs.cs" \
   Assets/FEB/Scripts/*.cs Assets/FEB/Editor/*.cs \
   Assets/Scripts/{LapTimer,FollowTarget,CLIManager,SocketConnection,DrivingMode,CameraSwitch,SceneLighting,LIDAR,VehicleController,AutomobileController,AbstractTargetFollower,WheelEffects,WheelEncoder,GPS,IMU,FrameGrabber}.cs \

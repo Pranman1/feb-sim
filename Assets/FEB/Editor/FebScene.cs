@@ -37,6 +37,11 @@ public static class FebScene
         loader.ResetManager = Object.FindObjectOfType<ResetManager>(true);
         loader.gameObject.AddComponent<GhostLap>().GhostMaterial =
             AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Transparent.mat");
+        loader.gameObject.AddComponent<FebLook>();
+        var hud = loader.gameObject.AddComponent<FebHud>();
+        hud.Canvas = loader.TitleLabel.canvas.GetComponent<RectTransform>();
+        hud.Font = loader.TitleLabel.font;
+        hud.UpstreamPanel = Find<RectTransform>("Lap Times and Count").gameObject;
 
         var auto = loader.gameObject.AddComponent<FebAutoStart>();
         auto.Cli = Object.FindObjectOfType<CLIManager>(true);
@@ -54,7 +59,7 @@ public static class FebScene
     }
 
     // Menu rows keep the upstream button style. Scene Light goes (no use on a racetrack); Track and
-    // Cars rows come in under Driving Mode, and the button column is re-spaced to fit eight rows.
+    // Cars and Look rows come in under Driving Mode, and the button column is re-spaced to fit nine rows.
     static void AddTrackButton(Transform menu)
     {
         Object.DestroyImmediate(menu.Find("Scene Light").gameObject);
@@ -62,10 +67,12 @@ public static class FebScene
         var template = menu.Find("Camera Switch").gameObject;
         var track = CloneRow(template, "Track", picker.NextTrack, "Assets/FEB/Sprites/Track Button.png");
         var cars = CloneRow(template, "Cars", picker.NextCars, "Assets/FEB/Sprites/Cars Button.png");
+        var look = CloneRow(template, "Look", picker.NextLook, "Assets/FEB/Sprites/Look Button.png");
         picker.TrackLabel = track.GetComponentInChildren<Text>();
         picker.CarsLabel = cars.GetComponentInChildren<Text>();
+        picker.LookLabel = look.GetComponentInChildren<Text>();
 
-        string[] order = { "Connection", "Driving Mode", "Track", "Cars", "Camera Switch", "Rendering Quality", "Scene Reset", "Quit" };
+        string[] order = { "Connection", "Driving Mode", "Track", "Cars", "Look", "Camera Switch", "Rendering Quality", "Scene Reset", "Quit" };
         const float bottom = 0.025f, top = 0.725f;
         float height = (top - bottom) / order.Length;
         for (int i = 0; i < order.Length; i++)
