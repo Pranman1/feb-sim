@@ -40,7 +40,7 @@ public class RenderingQuality : MonoBehaviour
                 Terrains[i].heightmapPixelError = 15;
                 Terrains[i].Flush();
             }
-        Application.targetFrameRate = -1;
+        Application.targetFrameRate = FebLaunch.Fps > 0 ? FebLaunch.Fps : -1; // FEB: capped so physics keeps real time
         Label.text = "Low Quality";
     }
 
@@ -68,7 +68,7 @@ public class RenderingQuality : MonoBehaviour
                 Terrains[i].heightmapPixelError = 15;
                 Terrains[i].Flush();
             }
-            Application.targetFrameRate = -1;
+            Application.targetFrameRate = FebLaunch.Fps > 0 ? FebLaunch.Fps : -1; // FEB: capped so physics keeps real time
             Label.text = "Low Quality";
         }
         else if(Mode == 1)
@@ -88,7 +88,7 @@ public class RenderingQuality : MonoBehaviour
                 Terrains[i].heightmapPixelError = 10;
                 Terrains[i].Flush();
             }
-            Application.targetFrameRate = -1;
+            Application.targetFrameRate = FebLaunch.Fps > 0 ? FebLaunch.Fps : -1; // FEB: capped so physics keeps real time
             Label.text = "High Quality";
         }
         else
@@ -108,7 +108,7 @@ public class RenderingQuality : MonoBehaviour
                 Terrains[i].heightmapPixelError = 5;
                 Terrains[i].Flush();
             }
-            Application.targetFrameRate = -1;
+            Application.targetFrameRate = FebLaunch.Fps > 0 ? FebLaunch.Fps : -1; // FEB: capped so physics keeps real time
             Label.text = "Ultra Quality";
         }
     }

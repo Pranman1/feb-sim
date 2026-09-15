@@ -38,6 +38,7 @@ public static class FebScene
         loader.gameObject.AddComponent<GhostLap>().GhostMaterial =
             AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Transparent.mat");
         loader.gameObject.AddComponent<FebLook>();
+        loader.gameObject.AddComponent<FebRealTime>();
         var hud = loader.gameObject.AddComponent<FebHud>();
         hud.Canvas = loader.TitleLabel.canvas.GetComponent<RectTransform>();
         hud.Font = loader.TitleLabel.font;

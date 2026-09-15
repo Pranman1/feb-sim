@@ -17,7 +17,7 @@ public class FebHud : MonoBehaviour
     Transform car;
     FebStartLine startLine;
     int lapsAtStart;
-    Text lapTime, lastLap, bestLap, lapCount, collisions, speed;
+    Text lapTime, lastLap, bestLap, lapCount, collisions, speed, realTime;
 
     public void Bind(Transform vehicle, FebStartLine line)
     {
@@ -38,6 +38,7 @@ public class FebHud : MonoBehaviour
 
         lapTime = Label(panel, "Lap time", new Vector2(0.03f, 0.42f), new Vector2(0.55f, 0.94f), 46, Color.white, TextAnchor.MiddleLeft, "--");
         speed = Label(panel, "Speed", new Vector2(0.55f, 0.42f), new Vector2(0.97f, 0.94f), 30, Color.white, TextAnchor.MiddleRight);
+        realTime = Label(panel, "Real time", new Vector2(0.75f, 0.02f), new Vector2(0.97f, 0.40f), 14, FebLook.Gold, TextAnchor.LowerRight);
 
         float[] x = { 0.03f, 0.27f, 0.51f, 0.75f };
         string[] names = { "LAST", "BEST", "LAP", "HITS" };
@@ -63,6 +64,9 @@ public class FebHud : MonoBehaviour
         lapCount.text = timer.LapCount.ToString();
         collisions.text = timer.CollisionCount.ToString();
         speed.text = body != null ? body.velocity.magnitude.ToString("0.0") + " m/s" : "";
+        float rtf = FebRealTime.Factor;
+        realTime.text = "RTF " + rtf.ToString("0.00");
+        realTime.color = rtf < 0.9f ? new Color(1f, 0.35f, 0.3f) : FebLook.Gold;   // red when simulated time falls behind
     }
 
     static string Time(float t) { return float.IsInfinity(t) ? "--" : t.ToString("0.00"); }

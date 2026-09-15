@@ -300,12 +300,29 @@ public class Socket : MonoBehaviour
         EmitTelemetry(obj);
     }
 
+    // FEB: the GPU readback of a camera is the costly part of every message. Read each camera back
+    // at most FebLaunch.CameraHz times per simulated second and reuse the last frame in between,
+    // so the sensor rate is not bound to the camera rate.
+    readonly Dictionary<Camera, (double at, string frame)> frameCache = new Dictionary<Camera, (double, string)>();
+
+    string CachedFrame(Camera camera)
+    {
+        double now = FebRealTime.SimTime;
+        if (FebLaunch.CameraHz > 0f && frameCache.TryGetValue(camera, out var cached) && now - cached.at < 1.0 / FebLaunch.CameraHz)
+            return cached.frame;
+        string frame = Convert.ToBase64String(FrameGrabber.CaptureFrame(camera));
+        frameCache[camera] = (now, frame);
+        return frame;
+    }
+
     void EmitTelemetry(SocketIOEvent obj)
     {
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
             // Debug.Log("Attempting to write data...");
             Dictionary<string, string> data = new Dictionary<string, string>(); // Create new `data` dictionary
+            data["Sim Time"] = FebRealTime.SimTime.ToString("F4");           // FEB: simulated seconds, for message stamps and /clock
+            data["Real Time Factor"] = FebRealTime.Factor.ToString("F3");   // FEB: simulated seconds per wall second
             // Read data from traffic lights
             if(TrafficLightControllers.Length != 0)
             {
@@ -353,13 +370,13 @@ public class Socket : MonoBehaviour
                     if(LIDAR3DUnits.Length != 0) data["V"+(i+1).ToString()+" LIDAR Pointcloud"] = Convert.ToBase64String(LIDAR3DUnits[i].CurrentPointcloud); // Get LIDAR pointcloud
                     if(FrontCameras.Length != 0)
                     {
-                        if(SideCameras) data["V"+(i+1).ToString()+" Left Camera Image"] = Convert.ToBase64String(FrameGrabber.CaptureFrame(FrontCameras[i])); // Get left camera image
-                        else data["V"+(i+1).ToString()+" Front Camera Image"] = Convert.ToBase64String(FrameGrabber.CaptureFrame(FrontCameras[i])); // Get front camera image
+                        if(SideCameras) data["V"+(i+1).ToString()+" Left Camera Image"] = CachedFrame(FrontCameras[i]); // Get left camera image
+                        else data["V"+(i+1).ToString()+" Front Camera Image"] = CachedFrame(FrontCameras[i]); // Get front camera image
                     }
                     if(RearCameras.Length != 0)
                     {
-                        if(SideCameras) data["V"+(i+1).ToString()+" Right Camera Image"] = Convert.ToBase64String(FrameGrabber.CaptureFrame(RearCameras[i])); // Get right camera image
-                        else data["V"+(i+1).ToString()+" Rear Camera Image"] = Convert.ToBase64String(FrameGrabber.CaptureFrame(RearCameras[i])); // Get rear camera image
+                        if(SideCameras) data["V"+(i+1).ToString()+" Right Camera Image"] = CachedFrame(RearCameras[i]); // Get right camera image
+                        else data["V"+(i+1).ToString()+" Rear Camera Image"] = CachedFrame(RearCameras[i]); // Get rear camera image
                     }
                     if(TireFrictions.Length != 0)
                     {

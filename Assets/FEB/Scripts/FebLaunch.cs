@@ -12,6 +12,10 @@ using UnityEngine;
       --cars <n>                 number of cars (head-to-head)
       --camera <name>            starting camera, e.g. "God's Eye", Trackcam, "Driver's Eye"
       --look <visual|simple>     dressed scene or the bare one (default: last choice, else visual)
+      --fps <n>                  render-rate cap (default 60; 0 = uncapped). Leaves GPU headroom so
+                                 simulated time keeps up with the wall clock
+      --camera-hz <rate>         how often the bridge cameras are read back (default 10; 0 = every
+                                 message). The readback is the costly part of each message
 
     Unity's own flags (-batchmode, -nographics, -screen-width ...) still apply.
 */
@@ -23,6 +27,8 @@ public static class FebLaunch
     public static string Mode = Get("--mode");
     public static string Camera = Get("--camera");
     public static float LidarHz = float.TryParse(Get("--lidar-hz"), out var hz) ? hz : 0f;
+    public static int Fps = int.TryParse(Get("--fps"), out var fps) ? fps : 60;
+    public static float CameraHz = float.TryParse(Get("--camera-hz"), out var chz) ? chz : 10f;
     public static int Cars = int.TryParse(Get("--cars"), out var n) ? Math.Max(1, n) : 1;   // also set by the in-app menu
 
     const string LookKey = "feb.look";
