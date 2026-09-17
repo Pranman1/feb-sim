@@ -20,8 +20,7 @@ public class TrackLoader : MonoBehaviour
     public Transform OverviewCamera;            // "God's Eye" camera, aimed at the car by TrackTarget
     public Material WallMaterial;               // HDRP lit material; also tinted for the cones
     public float ConeHeight = 0.30f;            // metres; tall enough for the lidar plane (~0.1 m) to hit
-    public float GridSpacing = 0.7f;            // lateral distance between the two grid columns
-    public float GridStagger = 1.0f;            // longitudinal distance between grid rows (the car is 0.55 m long)
+    public float GridStagger = 2.5f;            // distance between cars on the single-file grid: outside the lidar bubble of the car behind
     public Text TitleLabel;                     // toolbar text, shows the track name
     public Socket Bridge;                       // the scene's Socket, whose per-vehicle arrays grow with --cars
     public DrivingMode Driving;
@@ -318,11 +317,10 @@ public class TrackLoader : MonoBehaviour
         Quaternion rotation = TrackData.ToUnityYaw(pose.yaw);
         for (int i = 0; i < Vehicles.Length; i++)
         {
-            // two-column grid centred on the spawn pose, so every car stays inside the corridor:
-            // column alternates left/right, each car half a row behind the previous one
-            float lateral = (i % 2 == 0 ? -0.5f : 0.5f) * GridSpacing;
-            float back = GridStagger * (i / 2) + 0.5f * GridStagger * (i % 2);
-            Vector3 position = TrackData.ToUnity(pose.x, pose.y, 0.01f) + rotation * new Vector3(lateral, 0f, -back);
+            // single-file grid on the centreline, car 0 in front: a car beside another in a 2.2 m
+            // corridor sits inside its neighbour's lidar safety bubble and both steer into the walls
+            // at the start; in line, the car behind simply follows (RoboRacer head-to-head starts the same way)
+            Vector3 position = TrackData.ToUnity(pose.x, pose.y, 0.01f) + rotation * new Vector3(0f, 0f, -GridStagger * i);
             Vehicles[i].SetPositionAndRotation(position, rotation);
             var body = Vehicles[i].GetComponent<Rigidbody>();   // interpolated bodies ignore a bare transform move
             if (body != null) { body.position = position; body.rotation = rotation; }
