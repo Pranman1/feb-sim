@@ -20,6 +20,8 @@ public class TrackData
     public string name;
     public string direction;
     public int max_cars;        // 0 or missing = no limit
+    public string category;     // feb, feb_cones, fsae, roboracer, f1, f1_cones (the track picker's groups)
+    public int difficulty;      // 1..5
     public float length;
     public float[] centreline;
     public TrackCheckpoint[] checkpoints; // checkpoints[0] is the finish line

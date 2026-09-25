@@ -66,7 +66,7 @@ public static class FebScene
         Object.DestroyImmediate(menu.Find("Scene Light").gameObject);
         var picker = menu.gameObject.AddComponent<FebTrackMenu>();
         var template = menu.Find("Camera Switch").gameObject;
-        var track = CloneRow(template, "Track", picker.NextTrack, "Assets/FEB/Sprites/Track Button.png");
+        var track = CloneRow(template, "Track", picker.OpenTracks, "Assets/FEB/Sprites/Track Button.png");
         var cars = CloneRow(template, "Cars", picker.NextCars, "Assets/FEB/Sprites/Cars Button.png");
         var look = CloneRow(template, "Look", picker.NextLook, "Assets/FEB/Sprites/Look Button.png");
         picker.TrackLabel = track.GetComponentInChildren<Text>();

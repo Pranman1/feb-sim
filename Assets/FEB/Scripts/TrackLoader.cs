@@ -38,6 +38,20 @@ public class TrackLoader : MonoBehaviour
     const float CheckpointHeight = 1.0f;
     const float CheckpointThickness = 0.05f;
 
+    void Start()
+    {
+        if (FebLaunch.Picker) StartCoroutine(OpenPicker());
+    }
+
+    /// --picker: open the track picker once the scene is up (screenshots, docs). The picker
+    /// component sits on the folded side menu, which is inactive, so it is driven from here.
+    System.Collections.IEnumerator OpenPicker()
+    {
+        yield return null;
+        var menu = FindObjectOfType<FebTrackMenu>(true);
+        if (menu != null) menu.OpenTracks();
+    }
+
     void Awake()
     {
         Folder = TrackLibrary.Resolve(FebLaunch.Track ?? DefaultTrack);
