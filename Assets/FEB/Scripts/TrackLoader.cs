@@ -19,7 +19,8 @@ public class TrackLoader : MonoBehaviour
     public FollowTarget TrackCamera;            // top-down "Trackcam" follower
     public Transform OverviewCamera;            // "God's Eye" camera, aimed at the car by TrackTarget
     public Material WallMaterial;               // HDRP lit material; also tinted for the cones
-    public float ConeHeight = 0.30f;            // metres; tall enough for the lidar plane (~0.1 m) to hit
+    public float SmallConeHeight = 0.178f;      // metres: the 7 inch cones that mark the blue/yellow boundaries
+    public float BigConeHeight = 0.305f;        // metres: the 12 inch orange cones at the start line
     public float GridStagger = 2.5f;            // distance between cars on the single-file grid: outside the lidar bubble of the car behind
     public Text TitleLabel;                     // toolbar text, shows the track name
     public Socket Bridge;                       // the scene's Socket, whose per-vehicle arrays grow with --cars
@@ -145,10 +146,13 @@ public class TrackLoader : MonoBehaviour
     void BuildCones(Transform parent)
     {
         if (Track.cones == null || Track.cones.Length == 0) return;
-        var mesh = ConeMesh(ConeHeight);
+        var meshes = new Dictionary<string, Mesh>();
         var materials = new Dictionary<string, Material[]>();
         foreach (var cone in Track.cones)
         {
+            float height = ConeHeight(cone.color);
+            if (!meshes.TryGetValue(cone.color, out var mesh))
+                meshes[cone.color] = mesh = ConeMesh(height, cone.color == "orange");
             if (!materials.TryGetValue(cone.color, out var pair))
                 materials[cone.color] = pair = new[] { new Material(WallMaterial) { color = ConeColor(cone.color) },
                                                        new Material(WallMaterial) { color = StripeColor(cone.color) } };
@@ -158,18 +162,22 @@ public class TrackLoader : MonoBehaviour
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             go.AddComponent<MeshRenderer>().sharedMaterials = pair;
             var collider = go.AddComponent<CapsuleCollider>();
-            collider.center = new Vector3(0f, ConeHeight / 2f, 0f);
-            collider.height = ConeHeight;
-            collider.radius = 0.3f * ConeHeight;
+            collider.center = new Vector3(0f, height / 2f, 0f);
+            collider.height = height;
+            collider.radius = 0.3f * height;
         }
     }
 
-    // A truncated cone on a square base plate, apex up, origin at the ground. Submesh 0 is the
-    // body colour, submesh 1 the stripe band (FSAE: blue/white, yellow/black).
-    static Mesh ConeMesh(float height)
+    float ConeHeight(string colour) { return colour == "orange" ? BigConeHeight : SmallConeHeight; }
+
+    // A truncated cone on a square base plate, apex up, origin at the ground, proportioned like
+    // the real thing: a 7 inch sports cone has a 4.3 inch body at the base, a 1.2 inch top and a
+    // 5.5 inch plate; the 12 inch start cone is the same shape scaled, with a taller plate. Submesh 0
+    // is the body colour, submesh 1 the stripe band (FSAE: blue/white, yellow/black, orange/white).
+    static Mesh ConeMesh(float height, bool big)
     {
-        const int segments = 16;
-        float bottom = 0.30f * height, top = 0.08f * height, plate = 0.45f * height, plateHeight = 0.05f * height;
+        const int segments = 40;
+        float bottom = 0.31f * height, top = 0.085f * height, plate = 0.39f * height, plateHeight = (big ? 0.045f : 0.035f) * height;
         var vertices = new List<Vector3>();
         var body = new List<int>();
         var stripe = new List<int>();
@@ -179,24 +187,39 @@ public class TrackLoader : MonoBehaviour
             vertices.AddRange(new[] { a, b, c, d });
             tris.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 });
         }
-        // side: three bands, the middle one is the stripe
-        float[] h = { plateHeight, 0.45f * height, 0.65f * height, height };
+        // side in bands; the stripe is one band (two on the big cone, as on the real start cones)
+        float[] h = big ? new[] { plateHeight, 0.35f * height, 0.48f * height, 0.60f * height, 0.73f * height, height }
+                        : new[] { plateHeight, 0.45f * height, 0.65f * height, height };
+        bool[] isStripe = big ? new[] { false, true, false, true, false } : new[] { false, true, false };
         float Radius(float y) => Mathf.Lerp(bottom, top, (y - plateHeight) / (height - plateHeight));
-        for (int band = 0; band < 3; band++)
+        for (int band = 0; band < h.Length - 1; band++)
             for (int k = 0; k < segments; k++)
             {
                 float a0 = 2f * Mathf.PI * k / segments, a1 = 2f * Mathf.PI * (k + 1) / segments;
                 Vector3 r0 = new Vector3(Mathf.Cos(a0), 0f, Mathf.Sin(a0)), r1 = new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1));
                 float y0 = h[band], y1 = h[band + 1];
-                Quad(band == 1 ? stripe : body, r0 * Radius(y0) + Vector3.up * y0, r0 * Radius(y1) + Vector3.up * y1,
+                Quad(isStripe[band] ? stripe : body, r0 * Radius(y0) + Vector3.up * y0, r0 * Radius(y1) + Vector3.up * y1,
                      r1 * Radius(y1) + Vector3.up * y1, r1 * Radius(y0) + Vector3.up * y0);
             }
+        // flat top
+        {
+            int centre = vertices.Count;
+            vertices.Add(Vector3.up * height);
+            for (int k = 0; k < segments; k++)
+            {
+                float a0 = 2f * Mathf.PI * k / segments, a1 = 2f * Mathf.PI * (k + 1) / segments;
+                int i = vertices.Count;
+                vertices.Add(new Vector3(Mathf.Cos(a0) * top, height, Mathf.Sin(a0) * top));
+                vertices.Add(new Vector3(Mathf.Cos(a1) * top, height, Mathf.Sin(a1) * top));
+                body.AddRange(new[] { centre, i + 1, i });
+            }
+        }
         Vector3 p0 = new Vector3(-plate, 0f, -plate), p1 = new Vector3(plate, 0f, -plate), p2 = new Vector3(plate, 0f, plate), p3 = new Vector3(-plate, 0f, plate);
         Vector3 up = Vector3.up * plateHeight;
         Quad(body, p0 + up, p3 + up, p2 + up, p1 + up);                                  // plate top
         Quad(body, p0, p1, p1 + up, p0 + up); Quad(body, p1, p2, p2 + up, p1 + up);      // plate sides
         Quad(body, p2, p3, p3 + up, p2 + up); Quad(body, p3, p0, p0 + up, p3 + up);
-        var mesh = new Mesh { name = "Cone", subMeshCount = 2 };
+        var mesh = new Mesh { name = big ? "Big cone" : "Cone", subMeshCount = 2 };
         mesh.SetVertices(vertices);
         mesh.SetTriangles(body, 0);
         mesh.SetTriangles(stripe, 1);
@@ -205,7 +228,7 @@ public class TrackLoader : MonoBehaviour
         return mesh;
     }
 
-    static Color StripeColor(string name) { return name == "yellow" ? Color.black : Color.white; }
+    static Color StripeColor(string name) { return name == "yellow" ? Color.black : Color.white; }   // orange start cones: white bands
 
     static Color ConeColor(string name)
     {
