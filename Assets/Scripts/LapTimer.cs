@@ -60,7 +60,20 @@ public class LapTimer : MonoBehaviour
         }
 
         if (collision.collider.name == RacetrackName && Time.frameCount > IgnoreRacetrackRespawnUntilFrame) Respawn(); // Collision detected with racetrack
+
+        // FEB: a cone hit counts (once per cone per two seconds) but the car drives on, like the penalty on a real track
+        if (collision.collider.name.StartsWith("Cone "))
+        {
+            int id = collision.collider.GetInstanceID();
+            if (!coneHitFrames.TryGetValue(id, out float last) || Time.time - last > 2f)
+            {
+                coneHitFrames[id] = Time.time;
+                CollisionCount = CollisionCount + 1;
+            }
+        }
     }
+
+    private readonly Dictionary<int, float> coneHitFrames = new Dictionary<int, float>();
 
     private static long GetCollisionPairKey(LapTimer first, LapTimer second)
     {

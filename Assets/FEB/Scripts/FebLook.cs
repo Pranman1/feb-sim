@@ -236,7 +236,8 @@ public class FebLook : MonoBehaviour
                 Quad(parent, "Start line", pose, rotation, cp.width, 0.35f, chequer);
             else
                 foreach (float side in new[] { -1f, 1f })
-                    Quad(parent, "Checkpoint mark", pose + rotation * new Vector3(side * (cp.width / 2f - 0.10f), 0f, 0f), rotation, 0.12f, 0.12f, gold);
+                    if (track.cones == null || track.cones.Length == 0)     // on a cone track a gold mark reads as a yellow cone to a camera
+                        Quad(parent, "Checkpoint mark", pose + rotation * new Vector3(side * (cp.width / 2f - 0.10f), 0f, 0f), rotation, 0.12f, 0.12f, gold);
         }
     }
 
