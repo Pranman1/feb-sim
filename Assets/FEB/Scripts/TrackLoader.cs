@@ -179,6 +179,18 @@ public class TrackLoader : MonoBehaviour
             collider.center = new Vector3(0f, height / 2f, 0f);
             collider.height = height;
             collider.radius = 0.3f * height;
+            // a real cone is a light thing on a flat plate: it falls over when the car hits it
+            // (the hit still counts) instead of stopping the car like a post
+            var plate = go.AddComponent<BoxCollider>();
+            plate.center = new Vector3(0f, 0.01f, 0f);
+            plate.size = new Vector3(0.39f * height, 0.02f, 0.39f * height);
+            var body = go.AddComponent<Rigidbody>();
+            body.mass = cone.color == "orange" ? 0.6f : 0.3f;
+            body.drag = 0.3f;
+            body.angularDrag = 0.5f;
+            body.centerOfMass = new Vector3(0f, 0.25f * height, 0f);
+            body.interpolation = RigidbodyInterpolation.None;
+            body.sleepThreshold = 0.05f;
         }
     }
 
