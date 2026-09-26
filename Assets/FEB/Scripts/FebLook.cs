@@ -62,18 +62,37 @@ public class FebLook : MonoBehaviour
         int n = track.centreline.Length / 2;
         if (n < 3) return;
         var centre = new Vector3[n];
-        var width = new float[n];
+        var left = new float[n];       // each side on its own: a real cone layout is not symmetric about the centreline
+        var right = new float[n];
         var obstacles = Obstacles(track);
         for (int i = 0; i < n; i++)
         {
             centre[i] = TrackData.ToUnity(track.centreline[2 * i], track.centreline[2 * i + 1], RoadLift);
-            float nearest = float.MaxValue;
-            foreach (var o in obstacles) nearest = Mathf.Min(nearest, (o - centre[i]).sqrMagnitude);
-            width[i] = obstacles.Count > 0 ? Mathf.Max(0.3f, Mathf.Sqrt(nearest) - track.wall_diameter / 2f) : 1.0f;
         }
-        // smooth the width a little so wall joints do not scallop the edge
+        for (int i = 0; i < n; i++)
+        {
+            var tangent = (centre[(i + 1) % n] - centre[(i - 1 + n) % n]).normalized;
+            var leftDir = Vector3.Cross(tangent, Vector3.up).normalized;  // the same "left" Strip uses
+            float nearestL = float.MaxValue, nearestR = float.MaxValue;
+            foreach (var o in obstacles)
+            {
+                var d = o - centre[i];
+                float along = Vector3.Dot(d, tangent);
+                if (Mathf.Abs(along) > 3f) continue;                      // only cones beside this point
+                float side = Vector3.Dot(d, leftDir);
+                if (side >= 0f) nearestL = Mathf.Min(nearestL, side); else nearestR = Mathf.Min(nearestR, -side);
+            }
+            left[i] = nearestL < float.MaxValue ? Mathf.Max(0.3f, nearestL - track.wall_diameter / 2f) : 1.0f;
+            right[i] = nearestR < float.MaxValue ? Mathf.Max(0.3f, nearestR - track.wall_diameter / 2f) : 1.0f;
+        }
+        // smooth the widths a little so wall joints do not scallop the edge
         var smooth = new float[n];
-        for (int i = 0; i < n; i++) smooth[i] = (width[(i - 1 + n) % n] + width[i] + width[(i + 1) % n]) / 3f;
+        var smoothR = new float[n];
+        for (int i = 0; i < n; i++)
+        {
+            smooth[i] = (left[(i - 1 + n) % n] + left[i] + left[(i + 1) % n]) / 3f;
+            smoothR[i] = (right[(i - 1 + n) % n] + right[i] + right[(i + 1) % n]) / 3f;
+        }
 
         var asphalt = new Material(template) { name = "Asphalt" };
         SetColor(asphalt, Asphalt);
@@ -81,9 +100,9 @@ public class FebLook : MonoBehaviour
         var white = new Material(template) { name = "Edge line" };
         SetColor(white, new Color(0.92f, 0.92f, 0.92f));
 
-        Strip(parent, "Asphalt", centre, i => -smooth[i], i => smooth[i], asphalt, 0f);
+        Strip(parent, "Asphalt", centre, i => -smoothR[i], i => smooth[i], asphalt, 0f);
         Strip(parent, "Edge left", centre, i => smooth[i] - EdgeLine, i => smooth[i], white, 0.001f);
-        Strip(parent, "Edge right", centre, i => -smooth[i], i => -smooth[i] + EdgeLine, white, 0.001f);
+        Strip(parent, "Edge right", centre, i => -smoothR[i], i => -smoothR[i] + EdgeLine, white, 0.001f);
     }
 
     static List<Vector3> Obstacles(TrackData track)
