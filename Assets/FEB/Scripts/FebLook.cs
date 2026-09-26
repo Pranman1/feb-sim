@@ -69,21 +69,35 @@ public class FebLook : MonoBehaviour
         {
             centre[i] = TrackData.ToUnity(track.centreline[2 * i], track.centreline[2 * i + 1], RoadLift);
         }
+        var edges = Edges(track);        // the corridor's own edges when the builder wrote them; else the obstacles
         for (int i = 0; i < n; i++)
         {
             var tangent = (centre[(i + 1) % n] - centre[(i - 1 + n) % n]).normalized;
             var leftDir = Vector3.Cross(tangent, Vector3.up).normalized;  // the same "left" Strip uses
             float nearestL = float.MaxValue, nearestR = float.MaxValue;
-            foreach (var o in obstacles)
+            if (edges != null)
             {
-                var d = o - centre[i];
-                float along = Vector3.Dot(d, tangent);
-                if (Mathf.Abs(along) > 3f) continue;                      // only cones beside this point
-                float side = Vector3.Dot(d, leftDir);
-                if (side >= 0f) nearestL = Mathf.Min(nearestL, side); else nearestR = Mathf.Min(nearestR, -side);
+                foreach (var e in edges)
+                {
+                    float d = DistanceToPolyline(e, centre[i], out var q);
+                    float side = Vector3.Dot(q - centre[i], leftDir);
+                    if (side >= 0f) nearestL = Mathf.Min(nearestL, d); else nearestR = Mathf.Min(nearestR, d);
+                }
             }
-            left[i] = nearestL < float.MaxValue ? Mathf.Max(0.3f, nearestL - track.wall_diameter / 2f) : 1.0f;
-            right[i] = nearestR < float.MaxValue ? Mathf.Max(0.3f, nearestR - track.wall_diameter / 2f) : 1.0f;
+            else
+            {
+                foreach (var o in obstacles)
+                {
+                    var d = o - centre[i];
+                    float along = Vector3.Dot(d, tangent);
+                    if (Mathf.Abs(along) > 3f) continue;                      // only cones beside this point
+                    float side = Vector3.Dot(d, leftDir);
+                    if (side >= 0f) nearestL = Mathf.Min(nearestL, side); else nearestR = Mathf.Min(nearestR, -side);
+                }
+            }
+            float trim = edges != null ? 0f : track.wall_diameter / 2f;
+            left[i] = nearestL < float.MaxValue ? Mathf.Max(0.3f, nearestL - trim) : 1.0f;
+            right[i] = nearestR < float.MaxValue ? Mathf.Max(0.3f, nearestR - trim) : 1.0f;
         }
         // smooth the widths a little so wall joints do not scallop the edge
         var smooth = new float[n];
@@ -114,6 +128,36 @@ public class FebLook : MonoBehaviour
         if (list.Count == 0 && track.cones != null)
             foreach (var cone in track.cones) list.Add(TrackData.ToUnity(cone.x, cone.y, 0f));
         return list;
+    }
+
+    List<Vector3[]> Edges(TrackData track)
+    {
+        if (track.edges == null || track.edges.Length < 2) return null;
+        var list = new List<Vector3[]>();
+        foreach (var e in track.edges)
+        {
+            if (e == null || e.Length < 6) return null;
+            var pts = new Vector3[e.Length / 2];
+            for (int i = 0; i < pts.Length; i++) pts[i] = TrackData.ToUnity(e[2 * i], e[2 * i + 1], RoadLift);
+            list.Add(pts);
+        }
+        return list;
+    }
+
+    static float DistanceToPolyline(Vector3[] poly, Vector3 p, out Vector3 nearest)
+    {
+        float best = float.MaxValue;
+        nearest = p;
+        for (int i = 0; i < poly.Length; i++)
+        {
+            Vector3 a = poly[i], b = poly[(i + 1) % poly.Length];
+            Vector3 ab = b - a;
+            float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / Mathf.Max(ab.sqrMagnitude, 1e-6f));
+            Vector3 q = a + t * ab;
+            float d = (q - p).sqrMagnitude;
+            if (d < best) { best = d; nearest = q; }
+        }
+        return Mathf.Sqrt(best);
     }
 
     // A closed strip between two lateral offsets of the centreline (positive = driver's left).

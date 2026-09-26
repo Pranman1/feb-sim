@@ -30,6 +30,7 @@ public class TrackData
     public float wall_diameter;
     public string wall_color;   // hex, e.g. "#9a9a9a"
     public TrackCone[] cones;
+    public float[][] edges;     // the corridor's two edges (x, y pairs), when the builder wrote them
 
     public static TrackData Load(string folder)
     {
