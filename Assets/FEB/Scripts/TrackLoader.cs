@@ -185,10 +185,10 @@ public class TrackLoader : MonoBehaviour
             plate.center = new Vector3(0f, 0.01f, 0f);
             plate.size = new Vector3(0.39f * height, 0.02f, 0.39f * height);
             var body = go.AddComponent<Rigidbody>();
-            body.mass = cone.color == "orange" ? 0.6f : 0.3f;
-            body.drag = 0.3f;
-            body.angularDrag = 0.5f;
-            body.centerOfMass = new Vector3(0f, 0.25f * height, 0f);
+            body.mass = cone.color == "orange" ? 1.2f : 0.7f;              // heavy base: it slides and tips rather than ending up under the car
+            body.drag = 0.6f;
+            body.angularDrag = 1.0f;
+            body.centerOfMass = new Vector3(0f, 0.12f * height, 0f);
             body.interpolation = RigidbodyInterpolation.None;
             body.sleepThreshold = 0.05f;
         }
