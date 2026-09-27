@@ -191,7 +191,13 @@ public class TrackLoader : MonoBehaviour
             body.centerOfMass = new Vector3(0f, 0.12f * height, 0f);
             body.interpolation = RigidbodyInterpolation.None;
             body.sleepThreshold = 0.05f;
+            body.maxDepenetrationVelocity = 1f;                            // a cone under a wheel is nudged out, not fired out
         }
+        // the same cap on the cars: the physics engine separates a car that has ended up
+        // overlapping a cone by pushing it apart, and uncapped that push launched a car at
+        // 14 m/s from a standstill
+        foreach (var body in Bridge.VehicleRigidBodies)
+            if (body != null) body.maxDepenetrationVelocity = 3f;
     }
 
     float ConeHeight(string colour) { return colour == "orange" ? BigConeHeight : SmallConeHeight; }
