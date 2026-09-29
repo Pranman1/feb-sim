@@ -34,6 +34,7 @@ public class FebHud : MonoBehaviour
     {
         var panel = Rect("FEB HUD", Canvas, new Vector2(0.30f, 0.02f), new Vector2(0.70f, 0.17f));
         panel.gameObject.AddComponent<Image>().color = new Color(0.05f, 0.07f, 0.11f, 0.78f);
+        if (FebLaunch.NoHud) panel.gameObject.SetActive(false);        // --no-hud: photographs of the track
         Rect("Top line", panel, new Vector2(0f, 0.96f), new Vector2(1f, 1f)).gameObject.AddComponent<Image>().color = FebLook.Gold;
 
         lapTime = Label(panel, "Lap time", new Vector2(0.03f, 0.42f), new Vector2(0.55f, 0.94f), 46, Color.white, TextAnchor.MiddleLeft, "--");

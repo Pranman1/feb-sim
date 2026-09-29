@@ -55,10 +55,35 @@ public class FebLook : MonoBehaviour
         if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", new Color(0.55f, 0.58f, 0.64f));
     }
 
-    // Asphalt ribbon along the centreline, as wide as the corridor (nearest wall or cone),
-    // plus a white line along each edge.
+    // The road: asphalt between the two edges the track file gives (track_paint.py makes them
+    // from the cones or the walls themselves), and a white line along each edge. A track file
+    // without them gets a ribbon along the centreline, as wide as the nearest obstacles.
     void Road(Transform parent, TrackData track, Material template)
     {
+        var asphalt = new Material(template) { name = "Asphalt" };
+        SetColor(asphalt, Asphalt);
+        if (asphalt.HasProperty("_BaseColorMap")) { asphalt.SetTexture("_BaseColorMap", AsphaltTexture()); asphalt.SetTextureScale("_BaseColorMap", new Vector2(0.5f, 0.5f)); }
+        var white = new Material(template) { name = "Edge line" };
+        SetColor(white, new Color(0.92f, 0.92f, 0.92f));
+
+        if (track.paint_left != null && track.paint_right != null && track.paint_left.Length >= 6 && track.paint_left.Length == track.paint_right.Length)
+        {
+            int pairs = track.paint_left.Length / 2;
+            var l = new Vector3[pairs];
+            var r = new Vector3[pairs];
+            for (int i = 0; i < pairs; i++)
+            {
+                l[i] = TrackData.ToUnity(track.paint_left[2 * i], track.paint_left[2 * i + 1], RoadLift);
+                r[i] = TrackData.ToUnity(track.paint_right[2 * i], track.paint_right[2 * i + 1], RoadLift);
+            }
+            // beside a wall the line stands clear of the tube; beside cones it is the asphalt's own edge
+            float clear = track.walls != null && track.walls.Length > 0 ? track.wall_diameter / 2f + 0.01f : 0f;
+            Ribbon(parent, "Asphalt", l, r, asphalt, 0f);
+            Ribbon(parent, "Edge left", Inset(l, r, clear), Inset(l, r, clear + EdgeLine), white, 0.001f);
+            Ribbon(parent, "Edge right", Inset(r, l, clear), Inset(r, l, clear + EdgeLine), white, 0.001f);
+            return;
+        }
+
         int n = track.centreline.Length / 2;
         if (n < 3) return;
         var centre = new Vector3[n];
@@ -69,33 +94,20 @@ public class FebLook : MonoBehaviour
         {
             centre[i] = TrackData.ToUnity(track.centreline[2 * i], track.centreline[2 * i + 1], RoadLift);
         }
-        var edges = Edges(track);        // the corridor's own edges when the builder wrote them; else the obstacles
         for (int i = 0; i < n; i++)
         {
             var tangent = (centre[(i + 1) % n] - centre[(i - 1 + n) % n]).normalized;
             var leftDir = Vector3.Cross(tangent, Vector3.up).normalized;  // the same "left" Strip uses
             float nearestL = float.MaxValue, nearestR = float.MaxValue;
-            if (edges != null)
+            foreach (var o in obstacles)
             {
-                foreach (var e in edges)
-                {
-                    float d = DistanceToPolyline(e, centre[i], out var q);
-                    float side = Vector3.Dot(q - centre[i], leftDir);
-                    if (side >= 0f) nearestL = Mathf.Min(nearestL, d); else nearestR = Mathf.Min(nearestR, d);
-                }
+                var d = o - centre[i];
+                float along = Vector3.Dot(d, tangent);
+                if (Mathf.Abs(along) > 3f) continue;                      // only cones beside this point
+                float side = Vector3.Dot(d, leftDir);
+                if (side >= 0f) nearestL = Mathf.Min(nearestL, side); else nearestR = Mathf.Min(nearestR, -side);
             }
-            else
-            {
-                foreach (var o in obstacles)
-                {
-                    var d = o - centre[i];
-                    float along = Vector3.Dot(d, tangent);
-                    if (Mathf.Abs(along) > 3f) continue;                      // only cones beside this point
-                    float side = Vector3.Dot(d, leftDir);
-                    if (side >= 0f) nearestL = Mathf.Min(nearestL, side); else nearestR = Mathf.Min(nearestR, -side);
-                }
-            }
-            float trim = edges != null ? 0f : track.wall_diameter / 2f;
+            float trim = track.wall_diameter / 2f;
             left[i] = nearestL < float.MaxValue ? Mathf.Max(0.3f, nearestL - trim) : 1.0f;
             right[i] = nearestR < float.MaxValue ? Mathf.Max(0.3f, nearestR - trim) : 1.0f;
         }
@@ -107,16 +119,72 @@ public class FebLook : MonoBehaviour
             smooth[i] = (left[(i - 1 + n) % n] + left[i] + left[(i + 1) % n]) / 3f;
             smoothR[i] = (right[(i - 1 + n) % n] + right[i] + right[(i + 1) % n]) / 3f;
         }
-
-        var asphalt = new Material(template) { name = "Asphalt" };
-        SetColor(asphalt, Asphalt);
-        if (asphalt.HasProperty("_BaseColorMap")) { asphalt.SetTexture("_BaseColorMap", AsphaltTexture()); asphalt.SetTextureScale("_BaseColorMap", new Vector2(0.5f, 0.5f)); }
-        var white = new Material(template) { name = "Edge line" };
-        SetColor(white, new Color(0.92f, 0.92f, 0.92f));
-
         Strip(parent, "Asphalt", centre, i => -smoothR[i], i => smooth[i], asphalt, 0f);
         Strip(parent, "Edge left", centre, i => smooth[i] - EdgeLine, i => smooth[i], white, 0.001f);
         Strip(parent, "Edge right", centre, i => -smoothR[i], i => -smoothR[i] + EdgeLine, white, 0.001f);
+    }
+
+    // The line `a`, moved `distance` towards the line `b` it faces: square to its own direction
+    // where it has one, along the line across the road where it stands still (a corner it fans from).
+    static Vector3[] Inset(Vector3[] a, Vector3[] b, float distance)
+    {
+        int n = a.Length;
+        var moved = new Vector3[n];
+        for (int i = 0; i < n; i++)
+        {
+            Vector3 across = b[i] - a[i];
+            Vector3 along = a[(i + 1) % n] - a[(i - 1 + n) % n];
+            Vector3 square = Vector3.Cross(along, Vector3.up);
+            if (along.sqrMagnitude < 1e-6f) square = across;
+            else if (Vector3.Dot(square, across) < 0f) square = -square;
+            moved[i] = a[i] + square.normalized * distance;
+        }
+        return moved;
+    }
+
+    // A closed ribbon between two lines of facing points: each pair is joined to the next. Every
+    // triangle is wound to face up whichever way the lines run, and one with no area (a pair
+    // that repeats a point) is left out.
+    static void Ribbon(Transform parent, string name, Vector3[] a, Vector3[] b, Material material, float lift)
+    {
+        int n = a.Length;
+        var vertices = new Vector3[2 * n];
+        var uv = new Vector2[2 * n];
+        for (int i = 0; i < n; i++)
+        {
+            vertices[2 * i] = a[i] + Vector3.up * lift;
+            vertices[2 * i + 1] = b[i] + Vector3.up * lift;
+            uv[2 * i] = new Vector2(a[i].x, a[i].z);                  // the texture lies flat on the ground, a metre to a unit
+            uv[2 * i + 1] = new Vector2(b[i].x, b[i].z);
+        }
+        var triangles = new List<int>(6 * n);
+        for (int i = 0; i < n; i++)
+        {
+            int p = 2 * i, q = 2 * i + 1, r = 2 * ((i + 1) % n), s = 2 * ((i + 1) % n) + 1;
+            FaceUp(triangles, vertices, p, q, r);
+            FaceUp(triangles, vertices, q, s, r);
+        }
+        var mesh = new Mesh { name = name, indexFormat = IndexFormat.UInt32 };
+        mesh.vertices = vertices;
+        mesh.uv = uv;
+        mesh.triangles = triangles.ToArray();
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        go.AddComponent<MeshFilter>().sharedMesh = mesh;
+        var renderer = go.AddComponent<MeshRenderer>();
+        renderer.sharedMaterial = material;
+        renderer.shadowCastingMode = ShadowCastingMode.Off;
+    }
+
+    static void FaceUp(List<int> triangles, Vector3[] v, int p, int q, int r)
+    {
+        float up = Vector3.Cross(v[q] - v[p], v[r] - v[p]).y;
+        if (Mathf.Abs(up) < 1e-7f) return;
+        triangles.Add(p);
+        triangles.Add(up > 0f ? q : r);
+        triangles.Add(up > 0f ? r : q);
     }
 
     static List<Vector3> Obstacles(TrackData track)
@@ -128,36 +196,6 @@ public class FebLook : MonoBehaviour
         if (list.Count == 0 && track.cones != null)
             foreach (var cone in track.cones) list.Add(TrackData.ToUnity(cone.x, cone.y, 0f));
         return list;
-    }
-
-    List<Vector3[]> Edges(TrackData track)
-    {
-        if (track.edges == null || track.edges.Length < 2) return null;
-        var list = new List<Vector3[]>();
-        foreach (var e in track.edges)
-        {
-            if (e == null || e.Length < 6) return null;
-            var pts = new Vector3[e.Length / 2];
-            for (int i = 0; i < pts.Length; i++) pts[i] = TrackData.ToUnity(e[2 * i], e[2 * i + 1], RoadLift);
-            list.Add(pts);
-        }
-        return list;
-    }
-
-    static float DistanceToPolyline(Vector3[] poly, Vector3 p, out Vector3 nearest)
-    {
-        float best = float.MaxValue;
-        nearest = p;
-        for (int i = 0; i < poly.Length; i++)
-        {
-            Vector3 a = poly[i], b = poly[(i + 1) % poly.Length];
-            Vector3 ab = b - a;
-            float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / Mathf.Max(ab.sqrMagnitude, 1e-6f));
-            Vector3 q = a + t * ab;
-            float d = (q - p).sqrMagnitude;
-            if (d < best) { best = d; nearest = q; }
-        }
-        return Mathf.Sqrt(best);
     }
 
     // A closed strip between two lateral offsets of the centreline (positive = driver's left).

@@ -30,7 +30,8 @@ public class TrackData
     public float wall_diameter;
     public string wall_color;   // hex, e.g. "#9a9a9a"
     public TrackCone[] cones;
-    public float[][] edges;     // the corridor's two edges (x, y pairs), when the builder wrote them
+    public float[] paint_left;  // the asphalt's two edges as facing pairs (x, y, x, y, ...): point i of one faces
+    public float[] paint_right; // point i of the other. Written by feb-racing/tools/track_paint.py from the cones or walls
 
     public static TrackData Load(string folder)
     {

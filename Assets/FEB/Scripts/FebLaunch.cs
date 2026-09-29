@@ -12,6 +12,7 @@ using UnityEngine;
       --cars <n>                 number of cars (head-to-head)
       --camera <name>            starting camera, e.g. "God's Eye", Trackcam, "Driver's Eye"
       --picker                   open the track picker at start
+      --no-hud                   no lap panel over the picture (photographs of a track)
       --look <visual|simple>     dressed scene or the bare one (default: last choice, else visual)
       --fps <n>                  render-rate cap (default 60; 0 = uncapped). Leaves GPU headroom so
                                  simulated time keeps up with the wall clock
@@ -28,6 +29,7 @@ public static class FebLaunch
     public static string Mode = Get("--mode");
     public static string Camera = Get("--camera");
     public static bool Picker = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--picker") >= 0;   // open the track picker at start (screenshots, docs)
+    public static bool NoHud = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--no-hud") >= 0;
     public static float LidarHz = float.TryParse(Get("--lidar-hz"), out var hz) ? hz : 0f;
     public static int Fps = int.TryParse(Get("--fps"), out var fps) ? fps : 60;
     public static float CameraHz = float.TryParse(Get("--camera-hz"), out var chz) ? chz : 10f;
